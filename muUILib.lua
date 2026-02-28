@@ -478,17 +478,12 @@ function MatchaUI:Step()
         local isA  = self._open_tab == tabName
         local pid  = 'mu_tab_'..tabIdx..'_'
 
-        R(self,pid..'bg',  mx,   ty, sideW, self._tab_h,
-            isA and C.accDark or C.sidebar, 4)
-        R(self,pid..'pip', mx,   ty, 3, self._tab_h,
-            isA and C.acc or C.border, 5)
+        R(self,pid..'bg',  mx,   ty, sideW, self._tab_h, isA and C.accDark or C.sidebar, 4)
+        R(self,pid..'pip', mx,   ty, 3, self._tab_h, isA and C.acc or C.border, 5)
         R(self,pid..'sep', mx,   ty+self._tab_h-1, sideW, 1, C.border, 4)
-        TX(self,pid..'lb', tabName, mx+16,
-            ty + math.floor((self._tab_h-13)/2), 13,
-            isA and C.acc or C.txtDim, 5)
+        TX(self,pid..'lb', tabName, mx+16, ty + math.floor((self._tab_h-13)/2), 13, isA and C.acc or C.txtDim, 5)
 
-        if not isA and clickF
-            and self:_inBounds(Vector2.new(mx,ty), Vector2.new(sideW,self._tab_h)) then
+        if not isA and clickF and self:_inBounds(Vector2.new(mx,ty), Vector2.new(sideW,self._tab_h)) then
             self._open_tab = tabName
             self._tab_change_at = os.clock()
             self:_closeDropdown()
@@ -578,16 +573,12 @@ function MatchaUI:Step()
                     local pillW,pillH = 32,14
                     local pillX = sx+sw-pad-pillW
                     local pillY = iy
-                    R(self,iid..'pbg',  pillX, pillY, pillW, pillH,
-                        on and C.tglOn or C.tglOff, 8)
-                    RO(self,iid..'pbd', pillX, pillY, pillW, pillH,
-                        on and C.acc or C.border, 9)
+                    R(self,iid..'pbg',  pillX, pillY, pillW, pillH, on and C.tglOn or C.tglOff, 8)
+                    RO(self,iid..'pbd', pillX, pillY, pillW, pillH, on and C.acc or C.border, 9)
                     local knobX = on and (pillX+pillW-13) or (pillX+1)
-                    R(self,iid..'knob', knobX, pillY+1, 12, 12,
-                        on and C.white or C.txtMute, 10)
+                    R(self,iid..'knob', knobX, pillY+1, 12, 12, on and C.white or C.txtMute, 10)
                     TX(self,iid..'ptx', on and 'ON' or 'OFF',
-                        pillX+pillW/2, pillY+2, 9,
-                        on and C.white or C.txtMute, 10, true)
+                        pillX+pillW/2, pillY+2, 9, on and C.white or C.txtMute, 10, true)
 
                     TX(self,iid..'lbl', item.label, sx+pad, iy, 13, lblC, 7)
 
@@ -654,8 +645,7 @@ function MatchaUI:Step()
                     TX(self,iid..'lbl', item.label, sx+pad, iy, 13, C.txt, 7)
                     R(self,iid..'dbg',  ddX, ddY, ddW, ddH, C.input, 8)
                     RO(self,iid..'dbd', ddX, ddY, ddW, ddH, isOpen and C.acc or C.border, 9)
-                    TX(self,iid..'dtx', displayV, ddX+6, ddY+3, 12,
-                        isOpen and C.accGlow or C.txtDim, 9)
+                    TX(self,iid..'dtx', displayV, ddX+6, ddY+3, 12, isOpen and C.accGlow or C.txtDim, 9)
                     TX(self,iid..'dar', 'v', ddX+ddW-12, ddY+3, 11, C.txtMute, 9)
 
                     if clickF and self:_inBounds(Vector2.new(ddX,ddY), Vector2.new(ddW,ddH)) then
@@ -689,10 +679,8 @@ function MatchaUI:Step()
                     local hov = self:_inBounds(Vector2.new(bX,bY), Vector2.new(bW,bH))
                     local act = heldM1 and self._slider_drag == iid
 
-                    R(self,iid..'bg',  bX, bY, bW, bH,
-                        act and C.accDark or (hov and C.cardHov or C.card), 8)
-                    RO(self,iid..'bd', bX, bY, bW, bH,
-                        hov and C.acc or C.border, 9)
+                    R(self,iid..'bg',  bX, bY, bW, bH, act and C.accDark or (hov and C.cardHov or C.card), 8)
+                    RO(self,iid..'bd', bX, bY, bW, bH, hov and C.acc or C.border, 9)
                     if hov then
                         R(self,iid..'el',bX,bY,2,bH, C.acc, 10)
                     else
@@ -724,8 +712,7 @@ function MatchaUI:Step()
                         and C.txt or C.txtDim
 
                     R(self,iid..'bg',  tbX, tbY, tbW, tbH, C.input, 8)
-                    RO(self,iid..'bd', tbX, tbY, tbW, tbH,
-                        isTyping and C.acc or C.border, 9)
+                    RO(self,iid..'bd', tbX, tbY, tbW, tbH, isTyping and C.acc or C.border, 9)
                     TX(self,iid..'tx', disp, tbX+5, tbY+3, 12, dispC, 9)
 
                     if self:_pressed('m1') then
@@ -842,8 +829,7 @@ function MatchaUI:Step()
                 R(self,'mdd_hovbg'..ci, dx+1, cy2, dw-2, itemH-1, C.dropHov, 53)
             end
 
-            TX(self,'mdd_txt'..ci, choice, dx+8, cy2+2, 13,
-                found and C.accGlow or (hov2 and C.txt or C.txtDim), 54)
+            TX(self,'mdd_txt'..ci, choice, dx+8, cy2+2, 13, found and C.accGlow or (hov2 and C.txt or C.txtDim), 54)
 
             if hov2 and clickF then
                 cancelDrop = not dd.multi
