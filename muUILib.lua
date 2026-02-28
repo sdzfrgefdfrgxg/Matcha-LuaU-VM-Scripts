@@ -1,862 +1,797 @@
-local MatchaUI = {
-    -- internal
-    _drawings = {},
-    _tree = {},
-    _open_tab = nil,
-    _tab_change_at = 0,
-    _menu_open = true,
-    _menu_toggled_at = 0,
-    _menu_drag = nil,
-    _slider_drag = nil,
-    _input_ctx = nil,
-    _active_dropdown = nil,
-    _notifications = {},
-    _notif_count = 0,
-    _font = Drawing.Fonts.UI,
-
-    -- keybinds
-    _toggle_key = 'f2',
-
-    -- layout
-    title    = 'MatchaUI',
-    subtitle = '',
-    x = 100, y = 80,
-    w = 580, h = 460,
-    _tab_h   = 32,
-    _pad     = 8,
-
-    -- inputs table  (same pattern as catowice lib)
-    _inputs = {
-        ['m1']={id=0x01,held=false,click=false},
-        ['m2']={id=0x02,held=false,click=false},
-        ['unbound']={id=0x08,held=false,click=false},
-        ['tab']={id=0x09,held=false,click=false},
-        ['enter']={id=0x0D,held=false,click=false},
-        ['shift']={id=0x10,held=false,click=false},
-        ['ctrl']={id=0x11,held=false,click=false},
-        ['esc']={id=0x1B,held=false,click=false},
-        ['space']={id=0x20,held=false,click=false},
-        ['end']={id=0x23,held=false,click=false},
-        ['home']={id=0x24,held=false,click=false},
-        ['left']={id=0x25,held=false,click=false},
-        ['up']={id=0x26,held=false,click=false},
-        ['right']={id=0x27,held=false,click=false},
-        ['down']={id=0x28,held=false,click=false},
-        ['insert']={id=0x2D,held=false,click=false},
-        ['delete']={id=0x2E,held=false,click=false},
-        ['0']={id=0x30,held=false,click=false},['1']={id=0x31,held=false,click=false},
-        ['2']={id=0x32,held=false,click=false},['3']={id=0x33,held=false,click=false},
-        ['4']={id=0x34,held=false,click=false},['5']={id=0x35,held=false,click=false},
-        ['6']={id=0x36,held=false,click=false},['7']={id=0x37,held=false,click=false},
-        ['8']={id=0x38,held=false,click=false},['9']={id=0x39,held=false,click=false},
-        ['a']={id=0x41,held=false,click=false},['b']={id=0x42,held=false,click=false},
-        ['c']={id=0x43,held=false,click=false},['d']={id=0x44,held=false,click=false},
-        ['e']={id=0x45,held=false,click=false},['f']={id=0x46,held=false,click=false},
-        ['g']={id=0x47,held=false,click=false},['h']={id=0x48,held=false,click=false},
-        ['i']={id=0x49,held=false,click=false},['j']={id=0x4A,held=false,click=false},
-        ['k']={id=0x4B,held=false,click=false},['l']={id=0x4C,held=false,click=false},
-        ['m']={id=0x4D,held=false,click=false},['n']={id=0x4E,held=false,click=false},
-        ['o']={id=0x4F,held=false,click=false},['p']={id=0x50,held=false,click=false},
-        ['q']={id=0x51,held=false,click=false},['r']={id=0x52,held=false,click=false},
-        ['s']={id=0x53,held=false,click=false},['t']={id=0x54,held=false,click=false},
-        ['u']={id=0x55,held=false,click=false},['v']={id=0x56,held=false,click=false},
-        ['w']={id=0x57,held=false,click=false},['x']={id=0x58,held=false,click=false},
-        ['y']={id=0x59,held=false,click=false},['z']={id=0x5A,held=false,click=false},
-        ['f1']={id=0x70,held=false,click=false},['f2']={id=0x71,held=false,click=false},
-        ['f3']={id=0x72,held=false,click=false},['f4']={id=0x73,held=false,click=false},
-        ['f5']={id=0x74,held=false,click=false},['f6']={id=0x75,held=false,click=false},
-        ['f7']={id=0x76,held=false,click=false},['f8']={id=0x77,held=false,click=false},
-        ['f9']={id=0x78,held=false,click=false},['f10']={id=0x79,held=false,click=false},
-        ['f11']={id=0x7A,held=false,click=false},['f12']={id=0x7B,held=false,click=false},
-        ['lshift']={id=0xA0,held=false,click=false},['rshift']={id=0xA1,held=false,click=false},
-        ['lctrl']={id=0xA2,held=false,click=false},['rctrl']={id=0xA3,held=false,click=false},
-        ['minus']={id=0xBD,held=false,click=false},['period']={id=0xBE,held=false,click=false},
-    },
-
-    -- ── Colour Palette (Rayfield dark-blue aesthetic) ──────────────────────
-    _c = {
-        bg       = Color3.fromRGB(12,  13,  18 ),
-        sidebar  = Color3.fromRGB(16,  17,  24 ),
-        panel    = Color3.fromRGB(20,  21,  30 ),
-        card     = Color3.fromRGB(26,  27,  38 ),
-        cardHov  = Color3.fromRGB(32,  33,  47 ),
-        border   = Color3.fromRGB(40,  42,  60 ),
-        borderAc = Color3.fromRGB(0,   130, 200),
-        acc      = Color3.fromRGB(0,   170, 255),
-        accDim   = Color3.fromRGB(0,   90,  145),
-        accDark  = Color3.fromRGB(0,   35,  60 ),
-        accGlow  = Color3.fromRGB(130, 220, 255),
-        txt      = Color3.fromRGB(220, 228, 242),
-        txtDim   = Color3.fromRGB(115, 125, 158),
-        txtMute  = Color3.fromRGB(60,  65,  95 ),
-        black    = Color3.fromRGB(0,   0,   0  ),
-        white    = Color3.fromRGB(255, 255, 255),
-        green    = Color3.fromRGB(0,   210, 110),
-        greenDk  = Color3.fromRGB(0,   55,  32 ),
-        red      = Color3.fromRGB(235, 55,  70 ),
-        redDk    = Color3.fromRGB(80,  14,  20 ),
-        orange   = Color3.fromRGB(235, 135, 0  ),
-        input    = Color3.fromRGB(10,  11,  17 ),
-        dropBg   = Color3.fromRGB(14,  15,  22 ),
-        dropHov  = Color3.fromRGB(0,   45,  70 ),
-        notifBg  = Color3.fromRGB(16,  18,  28 ),
-        tglOn    = Color3.fromRGB(0,   170, 255),
-        tglOff   = Color3.fromRGB(40,  42,  62 ),
-        sliderBg = Color3.fromRGB(22,  23,  34 ),
-    },
-}
+MatchaUI = {}
 MatchaUI.__index = MatchaUI
 
--- ── Helpers ────────────────────────────────────────────────────────────────
-local function clamp(x,a,b) return x<a and a or x>b and b or x end
+local C_bg       = Color3.fromRGB(12,  13,  18)
+local C_panel    = Color3.fromRGB(17,  18,  26)
+local C_sidebar  = Color3.fromRGB(15,  15,  22)
+local C_card     = Color3.fromRGB(22,  23,  33)
+local C_cardHov  = Color3.fromRGB(28,  30,  42)
+local C_acc      = Color3.fromRGB(0,   170, 255)
+local C_accDim   = Color3.fromRGB(0,   90,  140)
+local C_accDark  = Color3.fromRGB(0,   35,  58)
+local C_accGlow  = Color3.fromRGB(120, 220, 255)
+local C_bord     = Color3.fromRGB(35,  37,  52)
+local C_txt      = Color3.fromRGB(215, 225, 240)
+local C_txtDim   = Color3.fromRGB(110, 120, 150)
+local C_txtMuted = Color3.fromRGB(55,  60,  90)
+local C_dropBg   = Color3.fromRGB(9,   10,  15)
+local C_dropHov  = Color3.fromRGB(0,   45,  70)
+local C_black    = Color3.fromRGB(0,   0,   0)
+local C_white    = Color3.fromRGB(255, 255, 255)
+local C_red      = Color3.fromRGB(225, 55,  70)
+local C_redDk    = Color3.fromRGB(80,  14,  20)
+local C_togOn    = Color3.fromRGB(0,   170, 255)
+local C_togOff   = Color3.fromRGB(45,  47,  68)
+local C_slider   = Color3.fromRGB(25,  26,  38)
+local C_input    = Color3.fromRGB(10,  11,  17)
+local C_notif    = Color3.fromRGB(16,  18,  28)
 
-local function lerp(a,b,t) return a+(b-a)*t end
+local pool = {}
 
-local function smooth(t)  -- smoothstep
-    t = clamp(t,0,1)
-    return t*t*(3-2*t)
-end
-
-function MatchaUI:_vp()
-    return workspace.CurrentCamera.ViewportSize
-end
-
-function MatchaUI:_mouse()
-    local p = game:GetService('Players').LocalPlayer
-    local m = p and p:GetMouse()
-    if m then return Vector2.new(m.X, m.Y) end
-    return Vector2.new(0,0)
-end
-
-function MatchaUI:_inBounds(origin, size)
-    local mp = self:_mouse()
-    return mp.X >= origin.X and mp.X <= origin.X+size.X
-       and mp.Y >= origin.Y and mp.Y <= origin.Y+size.Y
-end
-
-function MatchaUI:_pressed(key)   return self._inputs[key] and self._inputs[key].click end
-function MatchaUI:_held(key)      return self._inputs[key] and self._inputs[key].held  end
-
-function MatchaUI:_textW(text, size)
-    size = size or 13
-    return #text * size * 0.54
-end
-
--- ── Raw draw helpers ────────────────────────────────────────────────────────
-function MatchaUI:_D(id, dtype, col, zi, ...)
-    local d = self._drawings[id]
-    if not d then
-        self._drawings[id] = Drawing.new(dtype)
-        d = self._drawings[id]
+local function D(id, dtype)
+    if not pool[id] then
+        pool[id] = Drawing.new(dtype)
+        pool[id].Visible = false
     end
-
-    local args = {...}
-    if dtype == 'Square' then
-        d.Position  = args[1]
-        d.Size      = args[2]
-        d.Filled    = args[3]
-        d.Thickness = 1
-    elseif dtype == 'Text' then
-        d.Text    = tostring(args[1])
-        d.Font    = self._font
-        d.Size    = args[2] or 13
-        d.Outline = false
-        d.Center  = args[3] or false
-        if args[3] then
-            d.Position = args[4]
-        else
-            d.Position = args[4]
-        end
-    elseif dtype == 'Line' then
-        d.From      = args[1]
-        d.To        = args[2]
-        d.Thickness = args[3] or 1
-    elseif dtype == 'Circle' then
-        d.Position  = args[1]
-        d.Radius    = args[2]
-        d.Filled    = true
-        d.NumSides  = args[3] or 24
-        d.Thickness = 1
-    end
-
-    if col then d.Color = col end
-    d.ZIndex  = zi or 1
-    d.Visible = true
-    return d
+    return pool[id]
 end
 
--- shorthand wrappers
-local function R(ui,id,x,y,w,h, col,zi, filled)
-    return ui:_D(id,'Square',col,zi, Vector2.new(x,y), Vector2.new(w,h), filled~=false)
-end
-local function RO(ui,id,x,y,w,h, col,zi)
-    return ui:_D(id,'Square',col,zi, Vector2.new(x,y), Vector2.new(w,h), false)
-end
-local function TX(ui,id,text,x,y, sz,col,zi, center)
-    return ui:_D(id,'Text',col,zi, text, sz, center, Vector2.new(x,y))
-end
-local function LN(ui,id,x1,y1,x2,y2, col,thick,zi)
-    return ui:_D(id,'Line',col,zi, Vector2.new(x1,y1), Vector2.new(x2,y2), thick)
+local function R(id, x, y, w, h, col, zi)
+    local d = D(id, "Square")
+    d.Position  = Vector2.new(x, y)
+    d.Size      = Vector2.new(w, h)
+    d.Color     = col
+    d.Filled    = true
+    d.Thickness = 1
+    d.ZIndex    = zi or 1
+    d.Visible   = true
 end
 
-function MatchaUI:_hide(id)
-    local d = self._drawings[id]
-    if d then d.Visible = false end
+local function RO(id, x, y, w, h, col, zi)
+    local d = D(id, "Square")
+    d.Position  = Vector2.new(x, y)
+    d.Size      = Vector2.new(w, h)
+    d.Color     = col
+    d.Filled    = false
+    d.Thickness = 1
+    d.ZIndex    = zi or 1
+    d.Visible   = true
 end
 
-function MatchaUI:_hidePrefix(prefix)
-    for k,d in pairs(self._drawings) do
-        if k:sub(1,#prefix) == prefix then d.Visible = false end
-    end
+local function TX(id, text, x, y, sz, col, zi, center)
+    local d = D(id, "Text")
+    d.Text     = tostring(text)
+    d.Position = Vector2.new(x, y)
+    d.Size     = sz or 13
+    d.Color    = col or C_txt
+    d.Font     = Drawing.Fonts.UI
+    d.Outline  = false
+    d.Center   = (center == true)
+    d.ZIndex   = zi or 2
+    d.Visible  = true
 end
 
-function MatchaUI:_remove(id)
-    local d = self._drawings[id]
-    if d then d:Remove(); self._drawings[id] = nil end
+local function LN(id, x1, y1, x2, y2, col, zi)
+    local d = D(id, "Line")
+    d.From      = Vector2.new(x1, y1)
+    d.To        = Vector2.new(x2, y2)
+    d.Color     = col
+    d.Thickness = 1
+    d.ZIndex    = zi or 1
+    d.Visible   = true
 end
 
-function MatchaUI:_removePrefix(prefix)
-    for k,d in pairs(self._drawings) do
-        if k:sub(1,#prefix) == prefix then d:Remove(); self._drawings[k]=nil end
+local function CL(id, cx, cy, r, col, zi)
+    local d = D(id, "Circle")
+    d.Position  = Vector2.new(cx, cy)
+    d.Radius    = r
+    d.Color     = col
+    d.Filled    = true
+    d.NumSides  = 20
+    d.Thickness = 1
+    d.ZIndex    = zi or 1
+    d.Visible   = true
+end
+
+local function HID(id)
+    if pool[id] then pool[id].Visible = false end
+end
+
+local function HIDPFX(pfx)
+    for k, d in pairs(pool) do
+        if k:sub(1, #pfx) == pfx then d.Visible = false end
     end
 end
 
-function MatchaUI:_alpha(id, a)
-    local d = self._drawings[id]
-    if d then d.Transparency = clamp(a,0,1) end
+local _uid = 0
+local function uid()
+    _uid = _uid + 1
+    return "u" .. _uid .. "_"
 end
 
-function MatchaUI:_alphaPrefix(prefix, a)
-    for k,d in pairs(self._drawings) do
-        if k:sub(1,#prefix) == prefix then d.Transparency = clamp(a,0,1) end
+local function inside(mx, my, x, y, w, h)
+    return mx >= x and mx <= x + w and my >= y and my <= y + h
+end
+
+local VKS = {
+    {0x41,"A"},{0x42,"B"},{0x43,"C"},{0x44,"D"},{0x45,"E"},{0x46,"F"},
+    {0x47,"G"},{0x48,"H"},{0x49,"I"},{0x4A,"J"},{0x4B,"K"},{0x4C,"L"},
+    {0x4D,"M"},{0x4E,"N"},{0x4F,"O"},{0x50,"P"},{0x51,"Q"},{0x52,"R"},
+    {0x53,"S"},{0x54,"T"},{0x55,"U"},{0x56,"V"},{0x57,"W"},{0x58,"X"},
+    {0x59,"Y"},{0x5A,"Z"},
+    {0x30,"0"},{0x31,"1"},{0x32,"2"},{0x33,"3"},{0x34,"4"},
+    {0x35,"5"},{0x36,"6"},{0x37,"7"},{0x38,"8"},{0x39,"9"},
+    {0x70,"F1"},{0x71,"F2"},{0x72,"F3"},{0x73,"F4"},{0x74,"F5"},
+    {0x75,"F6"},{0x76,"F7"},{0x77,"F8"},{0x78,"F9"},{0x79,"F10"},
+    {0x7A,"F11"},{0x7B,"F12"},
+    {0x2D,"Ins"},{0x2E,"Del"},{0x24,"Home"},{0x23,"End"},
+    {0x21,"PgUp"},{0x22,"PgDn"},
+    {0x26,"Up"},{0x28,"Down"},{0x25,"Left"},{0x27,"Right"},
+    {0x20,"Space"},{0x10,"Shift"},{0x11,"Ctrl"},
+}
+
+local KEY_STR = {
+    f1=0x70,f2=0x71,f3=0x72,f4=0x73,f5=0x74,
+    f6=0x75,f7=0x76,f8=0x77,f9=0x78,f10=0x79,
+    f11=0x7A,f12=0x7B,
+    home=0x24,["end"]=0x23,ins=0x2D,del=0x2E,
+    pgup=0x21,pgdn=0x22,
+    up=0x26,down=0x28,left=0x25,right=0x27,
+    space=0x20,shift=0x10,ctrl=0x11,
+}
+for _, pair in ipairs(VKS) do
+    KEY_STR[pair[2]:lower()] = pair[1]
+end
+
+local function vkToName(vk)
+    for _, pair in ipairs(VKS) do
+        if pair[1] == vk then return pair[2] end
     end
+    return "0x" .. string.format("%X", vk)
 end
 
--- ── Dropdown ───────────────────────────────────────────────────────────────
-function MatchaUI:_openDropdown(pos, width, value, choices, multi, cb)
-    self:_closeDropdown()
-    self._active_dropdown = {
-        pos=pos, w=width, value=value, choices=choices,
-        multi=multi, cb=cb, born=os.clock()
-    }
-end
+local CHARMAP = {}
+for vk = 0x41, 0x5A do CHARMAP[vk] = string.char(vk + 32) end
+for vk = 0x30, 0x39 do CHARMAP[vk] = string.char(vk) end
+CHARMAP[0x20] = " "
+CHARMAP[0xBD] = "-"
+CHARMAP[0xBE] = "."
 
-function MatchaUI:_closeDropdown()
-    self._active_dropdown = nil
-    self:_hidePrefix('mdd_')
-end
+local WW      = 560
+local WH      = 450
+local SIDE_W  = 118
+local TOP_H   = 48
+local PAD     = 10
+local TAB_H   = 32
+local ELEM_H  = 42
+local ELEM_G  = 5
+local NW      = 290
+local NH      = 56
 
--- ── Public API ─────────────────────────────────────────────────────────────
 function MatchaUI:Init(cfg)
     cfg = cfg or {}
-    self.title       = cfg.Title    or 'MatchaUI'
-    self.subtitle    = cfg.Subtitle or ''
-    self._toggle_key = cfg.ToggleKey or 'f2'
-
-    local vp = self:_vp()
-    self.x = math.floor(vp.X/2 - self.w/2)
-    self.y = math.floor(vp.Y/2 - self.h/2)
+    self._title   = cfg.Title    or "MatchaUI"
+    self._sub     = cfg.Subtitle or ""
+    local tk      = cfg.ToggleKey or "f2"
+    self._tkvk    = KEY_STR[tk:lower()] or 0x71
+    self._tkvname = tk:upper()
+    local vp      = workspace.CurrentCamera.ViewportSize
+    self._wx      = math.floor((vp.X - WW) / 2)
+    self._wy      = math.floor((vp.Y - WH) / 2)
+    self._visible = true
+    self._tabs    = {}
+    self._curtab  = 1
+    self._drag    = false
+    self._dox     = 0
+    self._doy     = 0
+    self._pm1     = false
+    self._prevvk  = {}
+    self._dd      = nil
+    self._tbactive = nil
+    self._kblisten = nil
+    self._notifs  = {}
+    self._scroll  = {}
+    self._zones   = {}
     return self
+end
+
+function MatchaUI:Tab(name)
+    local tab = {name=name, sections={}}
+    table.insert(self._tabs, tab)
+    if #self._tabs == 1 then self._curtab = 1 end
+
+    function tab:Section(sname)
+        local sec = {name=sname, elements={}}
+        table.insert(self.sections, sec)
+
+        function sec:Button(ename, cb)
+            table.insert(self.elements, {t="btn",name=ename,id=uid(),cb=cb or function() end})
+        end
+
+        function sec:Toggle(ename, default, cb)
+            local el = {t="tog",name=ename,id=uid(),val=(default==true),cb=cb or function() end}
+            table.insert(self.elements, el)
+            local obj = {}
+            function obj:Set(v) el.val=(v==true); pcall(el.cb, el.val) end
+            return obj
+        end
+
+        function sec:Slider(ename, default, step, mn, mx2, suffix, cb)
+            local el = {
+                t="sld",name=ename,id=uid(),
+                val=default or 0,step=step or 1,
+                min=mn or 0,max=mx2 or 100,
+                suffix=suffix or "",cb=cb or function() end,
+                dragging=false
+            }
+            table.insert(self.elements, el)
+            local obj = {}
+            function obj:Set(v) el.val=math.clamp(v,el.min,el.max); pcall(el.cb,el.val) end
+            return obj
+        end
+
+        function sec:Dropdown(ename, default, options, multi, cb)
+            local el = {
+                t="dd",name=ename,id=uid(),
+                val=default or {},opts=options or {},
+                multi=(multi==true),cb=cb or function() end
+            }
+            table.insert(self.elements, el)
+            local obj = {}
+            function obj:Set(v) el.val=v; pcall(el.cb, el.val) end
+            function obj:Refresh(opts, def) el.opts=opts or {}; el.val=def or {} end
+            return obj
+        end
+
+        function sec:Textbox(ename, default, cb)
+            local el = {t="tbx",name=ename,id=uid(),val=default or "",cb=cb or function() end,active=false}
+            table.insert(self.elements, el)
+            local obj = {}
+            function obj:Set(v) el.val=v end
+            return obj
+        end
+
+        function sec:Keybind(ename, defaultKey, cb)
+            local vk = 0x71
+            local vname = "F2"
+            if type(defaultKey) == "string" then
+                vk = KEY_STR[defaultKey:lower()] or 0x71
+                vname = defaultKey:upper()
+            elseif type(defaultKey) == "number" then
+                vk = defaultKey
+                vname = vkToName(vk)
+            end
+            local el = {t="kb",name=ename,id=uid(),vk=vk,vname=vname,cb=cb or function() end,listening=false}
+            table.insert(self.elements, el)
+            local obj = {}
+            function obj:Set(v, n) el.vk=v; el.vname=n or vkToName(v) end
+            return obj
+        end
+
+        function sec:Label(text)
+            table.insert(self.elements, {t="lbl",text=text,id=uid()})
+        end
+
+        function sec:Divider()
+            table.insert(self.elements, {t="div",id=uid()})
+        end
+
+        return sec
+    end
+
+    return tab
 end
 
 function MatchaUI:Notify(text, duration)
     duration = duration or 3
-    table.insert(self._notifications, {
-        text=text, dur=duration,
-        born=os.clock(), id=self._notif_count
+    table.insert(self._notifs, {
+        text=tostring(text),dur=duration,
+        born=tick(),expires=tick()+duration,id=uid()
     })
-    self._notif_count = self._notif_count + 1
 end
 
 function MatchaUI:Unload()
-    self:_removePrefix('')
-    setrobloxinput(true)
+    self._dead = true
+    for _, d in pairs(pool) do pcall(function() d.Visible=false end) end
 end
 
--- ── Tab / Section builders ─────────────────────────────────────────────────
-function MatchaUI:Tab(name)
-    self._tree[name] = { _sections = {} }
-    if not self._open_tab then self._open_tab = name end
-
-    local ui = self
-    return {
-        Section = function(_, sname)
-            ui._tree[name]._sections[sname] = { _items = {} }
-            local sec = {}
-
-            local function addItem(t)
-                table.insert(ui._tree[name]._sections[sname]._items, t)
-                local idx = #ui._tree[name]._sections[sname]._items
-
-                local obj = {}
-                function obj:Set(v)
-                    ui._tree[name]._sections[sname]._items[idx].value = v
-                    local cb = ui._tree[name]._sections[sname]._items[idx].cb
-                    if cb then pcall(cb, v) end
-                end
-                function obj:UpdateChoices(c)
-                    ui._tree[name]._sections[sname]._items[idx].choices = c
-                end
-                return obj
-            end
-
-            function sec:Toggle(label, default, cb)
-                return addItem({type='toggle',label=label,value=default or false,cb=cb})
-            end
-            function sec:Slider(label, default, step, min, max, suffix, cb)
-                return addItem({type='slider',label=label,value=default or min or 0,
-                    step=step or 1,min=min or 0,max=max or 100,suffix=suffix or '',cb=cb})
-            end
-            function sec:Dropdown(label, value, choices, multi, cb)
-                -- value should be a table for consistency with catowice pattern
-                local v = type(value)=='table' and value or {value}
-                return addItem({type='dropdown',label=label,value=v,choices=choices or {},multi=multi,cb=cb})
-            end
-            function sec:Button(label, cb)
-                return addItem({type='button',label=label,cb=cb})
-            end
-            function sec:Textbox(label, default, cb)
-                return addItem({type='textbox',label=label,value=default or '',cb=cb})
-            end
-            function sec:Keybind(label, default, cb)
-                return addItem({type='keybind',label=label,value=default or nil,
-                    _listening=false,_listen_start=0,cb=cb})
-            end
-            function sec:Label(text)
-                return addItem({type='label',label=text})
-            end
-            function sec:Divider()
-                return addItem({type='divider'})
-            end
-
-            return sec
-        end
-    }
+local function EH(el)
+    if el.t == "lbl" then return 22 end
+    if el.t == "div" then return 12 end
+    if el.t == "sld" then return 52 end
+    return ELEM_H
 end
 
--- ── Step (call every frame) ────────────────────────────────────────────────
-function MatchaUI:Step()
-    local C = self._c
+function MatchaUI:_zone(x, y, w, h, fn)
+    table.insert(self._zones, {x=x,y=y,w=w,h=h,fn=fn})
+end
 
-    -- ── input processing (identical to catowice pattern) ──
-    setrobloxinput(not self._menu_open)
-    for key, data in pairs(self._inputs) do
-        local held = isrbxactive() and iskeypressed(data.id)
-        if held then
-            self._inputs[key].click = not data.held
-            self._inputs[key].held  = true
-        else
-            self._inputs[key].click = false
-            self._inputs[key].held  = false
-        end
-    end
+function MatchaUI:_edge(vk)
+    local now  = iskeypressed(vk)
+    local prev = self._prevvk[vk] or false
+    self._prevvk[vk] = now
+    return now and not prev
+end
 
-    local clickF  = self:_pressed('m1')
-    local heldM1  = self:_held('m1')
-    local ctxF    = self:_pressed('m2')
-    local mp      = self:_mouse()
+function MatchaUI:_drawElem(el, ex, ey, ew, mx, my, zi)
+    local p = el.id
 
-    -- toggle menu
-    if self:_pressed(self._toggle_key) then
-        self._menu_open = not self._menu_open
-        self._menu_toggled_at = os.clock()
-        if not self._menu_open then
-            self:_closeDropdown()
-        end
-    end
-
-    -- ── notifications ──────────────────────────────────────────────────────
-    local vp = self:_vp()
-    local nw, nh = 280, 54
-    local nx0 = vp.X - nw - 12
-    local totalNH = 0
-
-    for i=#self._notifications,1,-1 do
-        local n = self._notifications[i]
-        local age    = os.clock() - n.born
-        local fadeIn = smooth(math.min(age/0.2, 1))
-        local shouldFade = age > n.dur
-        local fadeOut = shouldFade and smooth(math.max(0,1-(age-n.dur)/0.3)) or 1
-        local fade = fadeIn * fadeOut
-
-        local ny = vp.Y - nh - 12 - totalNH
-        local nx = nx0 + nw*(1-fade)
-
-        local pid = 'notif_'..n.id..'_'
-        R(self,pid..'sh', nx+3, ny+3, nw, nh, C.black, 44)
-        R(self,pid..'bg', nx,   ny,   nw, nh, C.notifBg, 45)
-        RO(self,pid..'bd',nx,   ny,   nw, nh, C.acc,   46)
-        R(self,pid..'el', nx,   ny,   3,  nh, C.acc,   47)
-        R(self,pid..'et', nx,   ny,   nw, 1,  C.acc,   47)
-        TX(self,pid..'tx', n.text, nx+14, ny+nh/2-7, 13, C.txt, 48)
-
-        -- progress bar
-        local pct = clamp(1 - (age/n.dur), 0, 1)
-        R(self,pid..'pbg', nx+3, ny+nh-4, nw-6, 2, C.border, 48)
-        if pct > 0 then
-            R(self,pid..'pfl', nx+3, ny+nh-4, math.max(2,(nw-6)*pct), 2, C.acc, 49)
-        end
-
-        self:_alphaPrefix(pid, fade)
-        totalNH = totalNH + (nh+6)*fade
-
-        if age > n.dur + 0.35 then
-            self:_removePrefix(pid)
-            table.remove(self._notifications, i)
-        end
-    end
-
-    if not self._menu_open then
-        -- fade out menu drawings
-        local mf = smooth(clamp(1-(os.clock()-self._menu_toggled_at)/0.2,0,1))
-        self:_alphaPrefix('mu_', mf)
-        if mf <= 0 then self:_hidePrefix('mu_') end
+    if el.t == "lbl" then
+        TX(p.."tx", el.text, ex+4, ey+4, 12, C_txtDim, zi)
         return
     end
 
-    -- ── menu fade in ──
-    local menuFade = smooth(clamp((os.clock()-self._menu_toggled_at)/0.2,0,1))
-    self:_alphaPrefix('mu_', menuFade)
-
-    -- ── drag ──
-    if heldM1 and self._menu_drag then
-        self.x = mp.X - self._menu_drag.X
-        self.y = mp.Y - self._menu_drag.Y
-    elseif not heldM1 then
-        self._menu_drag = nil
+    if el.t == "div" then
+        LN(p.."ln", ex, ey+6, ex+ew, ey+6, C_bord, zi)
+        return
     end
 
-    -- layout vars
-    local mx, my = self.x, self.y
-    local mw, mh = self.w, self.h
-    local pad     = self._pad
-    local sideW   = 115
-    local topH    = 50
-    local contX   = mx + sideW
-    local contY   = my + topH
-    local contW   = mw - sideW
-    local contH   = mh - topH
+    local eh  = EH(el)
+    local hov = inside(mx, my, ex, ey, ew, eh)
 
-    -- ── Window shell ──
-    R(self,'mu_sh',  mx+4, my+4, mw,   mh,   C.black,  1)
-    R(self,'mu_bg',  mx,   my,   mw,   mh,   C.bg,     2)
-    RO(self,'mu_bd', mx,   my,   mw,   mh,   C.border, 3)
-    R(self,'mu_acel',mx,   my,   2,    mh,   C.acc,    4)  -- left accent strip
-    R(self,'mu_acet',mx,   my,   mw,   1,    C.acc,    4)  -- top accent strip
+    local bgc = C_card
+    if hov then bgc = C_cardHov end
+    R(p.."bg",  ex,   ey,   ew, eh, bgc,   zi)
+    RO(p.."bd", ex,   ey,   ew, eh, C_bord, zi+1)
+    if hov then R(p.."pip", ex, ey, 2, eh, C_acc, zi+2) end
 
-    -- ── Topbar ──
-    R(self,'mu_tbarbg', mx, my, mw, topH, C.sidebar, 3)
-    R(self,'mu_tbarsep',mx, my+topH-1, mw, 1, C.acc, 4)
-    TX(self,'mu_title',   self.title,    mx+16, my+10, 15, C.txt,    5)
-    TX(self,'mu_subtitle',self.subtitle, mx+16, my+28, 11, C.txtDim, 5)
-    TX(self,'mu_thint', self._toggle_key:upper()..' to toggle',
-        mx+mw-100, my+20, 11, C.txtMute, 5)
+    local nameY = ey + 14
+    if el.t == "sld" then nameY = ey + 8 end
+    TX(p.."nm", el.name, ex+10, nameY, 13, C_txt, zi+2)
 
-    -- close btn
-    R(self,'mu_closebg',  mx+mw-26, my+13, 14, 14, C.redDk, 5)
-    RO(self,'mu_closebd', mx+mw-26, my+13, 14, 14, C.red,   6)
-    TX(self,'mu_closetx', 'X', mx+mw-19, my+16, 11, C.red, 7, true)
-    if clickF and self:_inBounds(Vector2.new(mx+mw-26,my+13), Vector2.new(14,14)) then
-        self._menu_open = false
-        self._menu_toggled_at = os.clock()
-        clickF = false
-    end
+    if el.t == "btn" then
+        local bw = 64
+        local bx = ex + ew - bw - 8
+        local by = ey + 10
+        R(p.."cbg",  bx, by, bw, 22, C_accDim, zi+3)
+        RO(p.."cbd", bx, by, bw, 22, C_acc,    zi+4)
+        TX(p.."ctx", "Run", bx+bw/2, by+5, 11, C_white, zi+5, true)
+        self:_zone(ex, ey, ew, eh, function() pcall(el.cb) end)
 
-    -- drag zone (topbar, excluding close btn)
-    if clickF and self:_inBounds(Vector2.new(mx,my), Vector2.new(mw-32,topH)) then
-        self._menu_drag = Vector2.new(mp.X-mx, mp.Y-my)
-        clickF = false
-    end
-
-    -- ── Sidebar ──
-    R(self,'mu_sidebg',  mx, contY, sideW, contH, C.sidebar, 3)
-    R(self,'mu_sidesep', mx+sideW-1, contY, 1, contH, C.border, 4)
-
-    local tabIdx = 0
-    for tabName, _ in pairs(self._tree) do
-        local ty   = contY + tabIdx * self._tab_h
-        local isA  = self._open_tab == tabName
-        local pid  = 'mu_tab_'..tabIdx..'_'
-
-        R(self,pid..'bg',  mx,   ty, sideW, self._tab_h, isA and C.accDark or C.sidebar, 4)
-        R(self,pid..'pip', mx,   ty, 3, self._tab_h, isA and C.acc or C.border, 5)
-        R(self,pid..'sep', mx,   ty+self._tab_h-1, sideW, 1, C.border, 4)
-        TX(self,pid..'lb', tabName, mx+16, ty + math.floor((self._tab_h-13)/2), 13, isA and C.acc or C.txtDim, 5)
-
-        if not isA and clickF and self:_inBounds(Vector2.new(mx,ty), Vector2.new(sideW,self._tab_h)) then
-            self._open_tab = tabName
-            self._tab_change_at = os.clock()
-            self:_closeDropdown()
-            self._input_ctx = nil
-            clickF = false
+    elseif el.t == "tog" then
+        local pw  = 36
+        local ph  = 16
+        local px  = ex + ew - pw - 8
+        local py  = ey + math.floor((eh - ph) / 2)
+        local on  = el.val
+        local bgc2  = C_togOff
+        local bdc  = C_bord
+        local knx  = px + 2
+        local knc  = C_txtDim
+        local lbl  = "OFF"
+        local lblc = C_txtDim
+        if on then
+            bgc2  = C_togOn
+            bdc  = C_acc
+            knx  = px + pw - ph + 2
+            knc  = C_white
+            lbl  = "ON"
+            lblc = C_white
         end
+        R(p.."tbg",  px,  py,  pw, ph, bgc2, zi+3)
+        RO(p.."tbd", px,  py,  pw, ph, bdc,  zi+4)
+        R(p.."knb",  knx, py+2, ph-4, ph-4, knc, zi+5)
+        TX(p.."ttx", lbl, px+pw/2, py+3, 9, lblc, zi+5, true)
+        self:_zone(ex, ey, ew, eh, function()
+            el.val = not el.val
+            pcall(el.cb, el.val)
+        end)
 
-        tabIdx = tabIdx + 1
-    end
-
-    -- ── Content area ──
-    R(self,'mu_ctbg', contX, contY, contW, contH, C.panel, 3)
-
-    -- tab content fade
-    local tabFade = smooth(clamp((os.clock()-self._tab_change_at)/0.15,0,1))
-    self:_alphaPrefix('mu_sec_', tabFade)
-
-    local tabData = self._tree[self._open_tab]
-    if not tabData then goto _dropdownStep end
-
-    do
-        -- two-column layout for sections
-        local secIdx  = 0
-        local secCount = 0
-        for _ in pairs(tabData._sections) do secCount=secCount+1 end
-
-        local colW   = math.floor((contW - pad*3) / 2)
-        local colLX  = contX + pad
-        local colRX  = contX + pad + colW + pad
-        local colLY  = contY + self._tab_h + pad
-        local colRY  = contY + self._tab_h + pad
-
-        for secName, secData in pairs(tabData._sections) do
-            local isRight = secIdx % 2 == 1
-            local sx = isRight and colRX or colLX
-            local sy = isRight and colRY or colLY
-            local sw = colW
-            local pid = 'mu_sec_'..secIdx..'_'
-
-            -- measure section height
-            local sH = pad + 18 -- title
-            for _, item in ipairs(secData._items) do
-                if item.type == 'toggle'   then sH = sH + 13 + pad
-                elseif item.type == 'slider'   then sH = sH + 13 + 6 + pad*2 + 6
-                elseif item.type == 'dropdown' then sH = sH + 13 + 13 + pad*2 + 2
-                elseif item.type == 'button'   then sH = sH + 13 + pad*2
-                elseif item.type == 'textbox'  then sH = sH + 13 + pad
-                elseif item.type == 'keybind'  then sH = sH + 13 + pad
-                elseif item.type == 'label'    then sH = sH + 13 + 4
-                elseif item.type == 'divider'  then sH = sH + 8
-                end
-            end
-            sH = sH + pad
-
-            -- draw section card
-            R(self,pid..'bg',  sx,   sy, sw, sH, C.card,   5)
-            RO(self,pid..'bd', sx,   sy, sw, sH, C.border, 6)
-            -- section title
-            TX(self,pid..'ttl', secName:upper(), sx+pad, sy+pad, 10, C.acc, 7)
-            LN(self,pid..'tln', sx+pad + self:_textW(secName:upper(),10)+4,
-                sy+pad+7, sx+sw-pad, sy+pad+7, C.accDim, 1, 6)
-
-            -- items
-            local iy = sy + pad + 18
-            for itemIdx, item in ipairs(secData._items) do
-                local iid = pid..'i_'..itemIdx..'_'
-                local iW  = sw - pad*2
-
-                -- ── Divider ──
-                if item.type == 'divider' then
-                    LN(self,iid..'ln', sx+pad, iy+4, sx+sw-pad, iy+4, C.border, 1, 7)
-                    iy = iy + 8
-
-                -- ── Label ──
-                elseif item.type == 'label' then
-                    TX(self,iid..'tx', item.label, sx+pad, iy, 12, C.txtDim, 7)
-                    iy = iy + 13 + 4
-
-                -- ── Toggle ──
-                elseif item.type == 'toggle' then
-                    local on   = item.value
-                    local hov  = self:_inBounds(Vector2.new(sx+pad,iy), Vector2.new(iW,13))
-                    local lblC = on and C.txt or C.txtDim
-                    if hov then lblC = C.txt end
-
-                    -- toggle pill  (right side)
-                    local pillW,pillH = 32,14
-                    local pillX = sx+sw-pad-pillW
-                    local pillY = iy
-                    R(self,iid..'pbg',  pillX, pillY, pillW, pillH, on and C.tglOn or C.tglOff, 8)
-                    RO(self,iid..'pbd', pillX, pillY, pillW, pillH, on and C.acc or C.border, 9)
-                    local knobX = on and (pillX+pillW-13) or (pillX+1)
-                    R(self,iid..'knob', knobX, pillY+1, 12, 12, on and C.white or C.txtMute, 10)
-                    TX(self,iid..'ptx', on and 'ON' or 'OFF',
-                        pillX+pillW/2, pillY+2, 9, on and C.white or C.txtMute, 10, true)
-
-                    TX(self,iid..'lbl', item.label, sx+pad, iy, 13, lblC, 7)
-
-                    if hov and clickF then
-                        item.value = not item.value
-                        pcall(item.cb, item.value)
-                        clickF = false
-                    end
-                    iy = iy + 13 + pad
-
-                -- ── Slider ──
-                elseif item.type == 'slider' then
-                    local slH   = 6
-                    local slX   = sx + pad
-                    local slY   = iy + 13 + pad
-                    local slW   = iW
-                    local pct   = clamp((item.value-item.min)/(item.max-item.min),0,1)
-                    local fillW = math.max(3, math.floor(pct*slW))
-
-                    TX(self,iid..'lbl', item.label, sx+pad, iy, 13, C.txt, 7)
-                    local valTx = tostring(math.floor(item.value))..item.suffix
-                    TX(self,iid..'val', valTx, sx+sw-pad, iy, 12, C.accGlow, 7)
-
-                    R(self,iid..'trk',  slX, slY, slW, slH, C.sliderBg, 8)
-                    R(self,iid..'fl',   slX, slY, fillW, slH, C.acc, 9)
-                    RO(self,iid..'trd', slX, slY, slW, slH, C.border, 8)
-                    -- thumb circle
-                    self:_D(iid..'th','Circle',C.accGlow,10,
-                        Vector2.new(slX+fillW, slY+slH/2), 5, 20)
-
-                    -- drag
-                    local hov = self:_inBounds(Vector2.new(slX,slY-5), Vector2.new(slW,slH+10))
-                    if hov and clickF then
-                        self._slider_drag = iid
-                        clickF = false
-                    end
-                    if heldM1 and self._slider_drag == iid then
-                        local rx  = clamp(mp.X - slX, 0, slW)
-                        local pct2 = rx / slW
-                        local raw = item.min + pct2*(item.max-item.min)
-                        local stepped = math.floor(raw/item.step+0.5)*item.step
-                        item.value = clamp(stepped, item.min, item.max)
-                        pcall(item.cb, item.value)
-                    elseif not heldM1 and self._slider_drag == iid then
-                        self._slider_drag = nil
-                    end
-
-                    iy = iy + 13 + slH + pad*2 + 6
-
-                -- ── Dropdown ──
-                elseif item.type == 'dropdown' then
-                    local ddH  = 13 + pad
-                    local ddX  = sx+pad
-                    local ddY  = iy + 13 + pad
-                    local ddW  = iW
-                    local isOpen = self._active_dropdown ~= nil
-                        and self._active_dropdown._ownerId == iid
-
-                    local displayV = table.concat(item.value, ', ')
-                    if self:_textW(displayV,13) > ddW-16 then
-                        displayV = tostring(#item.value)..' item'..(#item.value==1 and '' or 's')
-                    end
-
-                    TX(self,iid..'lbl', item.label, sx+pad, iy, 13, C.txt, 7)
-                    R(self,iid..'dbg',  ddX, ddY, ddW, ddH, C.input, 8)
-                    RO(self,iid..'dbd', ddX, ddY, ddW, ddH, isOpen and C.acc or C.border, 9)
-                    TX(self,iid..'dtx', displayV, ddX+6, ddY+3, 12, isOpen and C.accGlow or C.txtDim, 9)
-                    TX(self,iid..'dar', 'v', ddX+ddW-12, ddY+3, 11, C.txtMute, 9)
-
-                    if clickF and self:_inBounds(Vector2.new(ddX,ddY), Vector2.new(ddW,ddH)) then
-                        if isOpen then
-                            self:_closeDropdown()
-                        else
-                            self:_openDropdown(
-                                Vector2.new(ddX, ddY+ddH),
-                                ddW,
-                                item.value,
-                                item.choices,
-                                item.multi,
-                                function(newVal)
-                                    item.value = newVal
-                                    pcall(item.cb, newVal)
-                                end
-                            )
-                            self._active_dropdown._ownerId = iid
-                        end
-                        clickF = false
-                    end
-
-                    iy = iy + 13 + ddH + pad*2 + 2
-
-                -- ── Button ──
-                elseif item.type == 'button' then
-                    local bH  = 13 + pad
-                    local bX  = sx+pad
-                    local bY  = iy
-                    local bW  = iW
-                    local hov = self:_inBounds(Vector2.new(bX,bY), Vector2.new(bW,bH))
-                    local act = heldM1 and self._slider_drag == iid
-
-                    R(self,iid..'bg',  bX, bY, bW, bH, act and C.accDark or (hov and C.cardHov or C.card), 8)
-                    RO(self,iid..'bd', bX, bY, bW, bH, hov and C.acc or C.border, 9)
-                    if hov then
-                        R(self,iid..'el',bX,bY,2,bH, C.acc, 10)
-                    else
-                        self:_hide(iid..'el')
-                    end
-                    TX(self,iid..'tx', item.label, bX+bW/2, bY+3, 13, C.txt, 9, true)
-
-                    if hov and clickF then
-                        self._slider_drag = iid
-                        clickF = false
-                        pcall(item.cb)
-                    end
-                    if not heldM1 then self._slider_drag = nil end
-
-                    iy = iy + bH + pad*2
-
-                -- ── Textbox ──
-                elseif item.type == 'textbox' then
-                    local tbH  = 13 + pad
-                    local tbX  = sx+pad
-                    local tbY  = iy
-                    local tbW  = iW
-                    local isTyping = self._input_ctx == iid
-
-                    local cursor = math.floor(os.clock()*2)%2==0 and '|' or ' '
-                    local disp = isTyping and ((item.value or '')..cursor)
-                        or (item.value ~= '' and item.value or item.label..' ')
-                    local dispC = (isTyping or (item.value and item.value~=''))
-                        and C.txt or C.txtDim
-
-                    R(self,iid..'bg',  tbX, tbY, tbW, tbH, C.input, 8)
-                    RO(self,iid..'bd', tbX, tbY, tbW, tbH, isTyping and C.acc or C.border, 9)
-                    TX(self,iid..'tx', disp, tbX+5, tbY+3, 12, dispC, 9)
-
-                    if self:_pressed('m1') then
-                        if self:_inBounds(Vector2.new(tbX,tbY), Vector2.new(tbW,tbH)) then
-                            self._input_ctx = iid
-                            clickF = false
-                        elseif isTyping then
-                            self._input_ctx = nil
-                        end
-                    end
-
-                    if isTyping then
-                        local shiftHeld = self:_held('lshift') or self:_held('rshift')
-                        local charMap = {space=' ',minus='-',period='.'}
-                        for char,_ in pairs(self._inputs) do
-                            if self:_pressed(char) then
-                                local mapped = charMap[char] or char
-                                if mapped == 'enter' then
-                                    self._input_ctx = nil
-                                    pcall(item.cb, item.value)
-                                elseif mapped == 'unbound' then
-                                    item.value = (item.value or ''):sub(1,-2)
-                                elseif #mapped == 1 then
-                                    item.value = (item.value or '')
-                                        .. (shiftHeld and mapped:upper() or mapped)
-                                end
-                            end
-                        end
-                    end
-
-                    iy = iy + tbH + pad
-
-                -- ── Keybind ──
-                elseif item.type == 'keybind' then
-                    local kbName = item.value and item.value:upper() or 'NONE'
-                    local kbW2 = math.max(40, self:_textW('['..kbName..']',11)+10)
-                    local kbX  = sx+sw-pad-kbW2
-                    local kbY  = iy
-                    local kbH  = 13
-
-                    TX(self,iid..'lbl', item.label, sx+pad, iy, 13, C.txt, 7)
-
-                    if item._listening then
-                        R(self,iid..'kbg',  kbX,kbY,kbW2,kbH, C.redDk,  8)
-                        RO(self,iid..'kbd', kbX,kbY,kbW2,kbH, C.red,    9)
-                        TX(self,iid..'ktx','[...]',kbX+kbW2/2,kbY+1,10,C.red,10,true)
-
-                        for keyName,_ in pairs(self._inputs) do
-                            if self:_pressed(keyName) then
-                                if keyName ~= 'm1' or os.clock()-item._listen_start > 0.2 then
-                                    if keyName == 'esc' then
-                                        item.value = nil
-                                    else
-                                        item.value = keyName ~= 'unbound' and keyName or nil
-                                    end
-                                    item._listening = false
-                                    pcall(item.cb, item.value)
-                                end
-                            end
-                        end
-                    else
-                        R(self,iid..'kbg',  kbX,kbY,kbW2,kbH, C.accDark, 8)
-                        RO(self,iid..'kbd', kbX,kbY,kbW2,kbH, C.acc,     9)
-                        TX(self,iid..'ktx','['..kbName..']',
-                            kbX+kbW2/2,kbY+1,10,C.accGlow,10,true)
-
-                        if clickF and self:_inBounds(Vector2.new(kbX,kbY), Vector2.new(kbW2,kbH)) then
-                            item._listening = true
-                            item._listen_start = os.clock()
-                            clickF = false
-                        end
-                    end
-
-                    iy = iy + kbH + pad
-                end
-            end
-
-            if isRight then
-                colRY = colRY + sH + pad
+    elseif el.t == "sld" then
+        local sw  = ew - 20
+        local sx  = ex + 10
+        local sy  = ey + 30
+        local sh  = 6
+        local rng = math.max(1, el.max - el.min)
+        local pct = (el.val - el.min) / rng
+        local fw  = math.max(4, math.floor(pct * sw))
+        R(p.."tr",  sx,      sy, sw, sh, C_slider,   zi+3)
+        R(p.."fl",  sx,      sy, fw, sh, C_acc,       zi+4)
+        CL(p.."kn", sx+fw, sy+sh/2, 5, C_accGlow,    zi+5)
+        RO(p.."trd",sx,      sy, sw, sh, C_bord,      zi+3)
+        TX(p.."vl", tostring(math.floor(el.val))..el.suffix, ex+ew-10, ey+8, 12, C_accGlow, zi+3)
+        if el.dragging then
+            if ismouse1pressed() then
+                local rx  = math.clamp(mx - sx, 0, sw)
+                local raw = el.min + (rx / sw) * rng
+                local snp = math.floor(raw / el.step + 0.5) * el.step
+                el.val = math.clamp(snp, el.min, el.max)
+                pcall(el.cb, el.val)
             else
-                colLY = colLY + sH + pad
+                el.dragging = false
             end
+        end
+        self:_zone(sx, sy-6, sw, sh+12, function() el.dragging=true end)
 
-            secIdx = secIdx + 1
+    elseif el.t == "dd" then
+        local dw  = 130
+        local dx  = ex + ew - dw - 8
+        local dy  = ey + 10
+        local dh  = 22
+        local isO = (self._dd ~= nil and self._dd.eid == el.id)
+        local disp = "None"
+        if type(el.val) == "table" then
+            if #el.val == 1 then
+                disp = el.val[1]
+            elseif #el.val > 1 then
+                disp = el.val[1] .. " (+" .. (#el.val-1) .. ")"
+            end
+        elseif type(el.val) == "string" and el.val ~= "" then
+            disp = el.val
+        end
+        local dbd = C_bord
+        local dtc = C_txtDim
+        if isO then dbd = C_acc; dtc = C_accGlow end
+        R(p.."dbg",  dx, dy, dw, dh, C_dropBg, zi+3)
+        RO(p.."dbd", dx, dy, dw, dh, dbd,       zi+4)
+        TX(p.."dtx", disp, dx+7, dy+5, 12, dtc, zi+5)
+        TX(p.."dar", "v",  dx+dw-12, dy+5, 12, C_txtMuted, zi+5)
+        local eid = el.id
+        local eref = el
+        self:_zone(dx, dy, dw, dh, function()
+            if isO then self._dd=nil; return end
+            local ms   = math.min(7, #eref.opts)
+            local popH = ms * 20 + 4
+            local iy   = dy + dh + 1
+            local vp2  = workspace.CurrentCamera.ViewportSize
+            if iy + popH > self._wy + WH - 4 then iy = dy - popH - 1 end
+            local uiref = self
+            self._dd = {
+                eid=eid, x=dx, y=iy, w=dw, h=popH,
+                opts=eref.opts, sel=eref.val,
+                ms=ms, iH=20, sc=0, multi=eref.multi,
+                onpick=function(v)
+                    if eref.multi then
+                        local sel = eref.val
+                        if type(sel) ~= "table" then sel={} end
+                        local found = false
+                        for i, s in ipairs(sel) do
+                            if s == v then table.remove(sel,i); found=true; break end
+                        end
+                        if not found then table.insert(sel, v) end
+                        eref.val = sel
+                        pcall(eref.cb, eref.val)
+                    else
+                        eref.val = {v}
+                        pcall(eref.cb, eref.val)
+                        uiref._dd = nil
+                    end
+                end
+            }
+        end)
+
+    elseif el.t == "tbx" then
+        local tw  = 130
+        local tx2 = ex + ew - tw - 8
+        local ty2 = ey + 10
+        local th  = 24
+        local active = (self._tbactive == el)
+        local disp2 = el.val
+        if active then
+            local blink = (math.floor(tick() * 2) % 2 == 0)
+            if blink then disp2 = el.val .. "|" end
+        end
+        local tbd = C_bord
+        local ttc = C_txtDim
+        if active then tbd=C_acc; ttc=C_txt end
+        R(p.."tbg",  tx2, ty2, tw, th, C_input, zi+3)
+        RO(p.."tbd", tx2, ty2, tw, th, tbd,     zi+4)
+        TX(p.."ttx", disp2, tx2+6, ty2+6, 12, ttc, zi+5)
+        local eref2 = el
+        self:_zone(tx2, ty2, tw, th, function() self._tbactive=eref2 end)
+
+    elseif el.t == "kb" then
+        local kw  = math.max(50, #el.vname * 7 + 14)
+        local kx  = ex + ew - kw - 8
+        local ky  = ey + 11
+        local kh  = 20
+        if el.listening then
+            R(p.."kbg",  kx, ky, kw, kh, C_redDk, zi+3)
+            RO(p.."kbd", kx, ky, kw, kh, C_red,   zi+4)
+            TX(p.."ktx", "...", kx+kw/2, ky+4, 11, C_red, zi+5, true)
+            if self:_edge(0x1B) then
+                el.listening   = false
+                self._kblisten = nil
+            else
+                for _, pair in ipairs(VKS) do
+                    if self:_edge(pair[1]) then
+                        el.vk        = pair[1]
+                        el.vname     = pair[2]
+                        el.listening = false
+                        self._kblisten = nil
+                        pcall(el.cb, el.vk, el.vname)
+                        break
+                    end
+                end
+            end
+        else
+            R(p.."kbg",  kx, ky, kw, kh, C_accDark, zi+3)
+            RO(p.."kbd", kx, ky, kw, kh, C_acc,     zi+4)
+            TX(p.."ktx", el.vname, kx+kw/2, ky+4, 11, C_accGlow, zi+5, true)
+            local eref3 = el
+            local uiref2 = self
+            self:_zone(kx, ky, kw, kh, function()
+                if uiref2._kblisten then uiref2._kblisten.listening=false end
+                eref3.listening   = true
+                uiref2._kblisten  = eref3
+            end)
+        end
+    end
+end
+
+function MatchaUI:_drawNotifs()
+    local now = tick()
+    for i = #self._notifs, 1, -1 do
+        if now >= self._notifs[i].expires then
+            HIDPFX(self._notifs[i].id)
+            table.remove(self._notifs, i)
+        end
+    end
+    local vp  = workspace.CurrentCamera.ViewportSize
+    local bx  = vp.X - NW - 12
+    local by  = vp.Y - 12
+    for i, n in ipairs(self._notifs) do
+        local ny  = by - i * (NH + 8)
+        local age = now - n.born
+        local sl  = math.min(1, age / 0.2)
+        local nx  = bx + NW * (1 - sl)
+        local p   = n.id
+        R(p.."sh",  nx+3, ny+3, NW,   NH,   C_black, 44)
+        R(p.."bg",  nx,   ny,   NW,   NH,   C_notif, 45)
+        RO(p.."bd", nx,   ny,   NW,   NH,   C_acc,   46)
+        R(p.."ac",  nx,   ny,   3,    NH,   C_acc,   47)
+        TX(p.."tx", n.text, nx+12, ny+math.floor((NH-13)/2), 13, C_txt, 48)
+        local pct = math.max(0, (n.expires - now) / n.dur)
+        local bw  = math.floor(pct * (NW - 6))
+        R(p.."bt",  nx+3, ny+NH-4, NW-6, 2, C_bord, 48)
+        if bw > 0 then R(p.."bf", nx+3, ny+NH-4, bw, 2, C_acc, 49) end
+    end
+end
+
+function MatchaUI:_drawDD(mx, my)
+    local dd = self._dd
+    if not dd then return end
+    R("_dd_sh",  dd.x+3, dd.y+3, dd.w, dd.h, C_black,  28)
+    R("_dd_bg",  dd.x,   dd.y,   dd.w, dd.h, C_dropBg, 29)
+    RO("_dd_bd", dd.x,   dd.y,   dd.w, dd.h, C_acc,    30)
+    R("_dd_tl",  dd.x,   dd.y,   dd.w, 2,    C_acc,    31)
+    for i = 1, dd.ms do
+        local idx  = i + dd.sc
+        if idx <= #dd.opts then
+            local iy  = dd.y + (i-1) * dd.iH
+            local val = dd.opts[idx]
+            local sel = false
+            if type(dd.sel) == "table" then
+                for _, s in ipairs(dd.sel) do
+                    if s == val then sel=true; break end
+                end
+            else
+                sel = (dd.sel == val)
+            end
+            local hov = inside(mx, my, dd.x+1, iy, dd.w-2, dd.iH)
+            if sel then
+                R("_ddi_b"..i,  dd.x+1, iy, dd.w-2, dd.iH-1, C_accDark, 31)
+                LN("_ddi_l"..i, dd.x+1, iy, dd.x+1, iy+dd.iH-2, C_acc, 32)
+            elseif hov then
+                R("_ddi_b"..i, dd.x+1, iy, dd.w-2, dd.iH-1, C_dropHov, 31)
+            else
+                HID("_ddi_b"..i)
+                HID("_ddi_l"..i)
+            end
+            local itc = C_txtDim
+            if sel then itc = C_accGlow elseif hov then itc = C_txt end
+            TX("_ddi_t"..i, val, dd.x+9, iy+4, 13, itc, 32)
+        end
+    end
+end
+
+function MatchaUI:_render(mx, my)
+    self:_drawNotifs()
+
+    if not self._visible then
+        HIDPFX("_w")
+        HIDPFX("_tb")
+        HIDPFX("_sb")
+        HIDPFX("_ct")
+        HIDPFX("_dd")
+        HIDPFX("_si")
+        return
+    end
+
+    local wx = self._wx
+    local wy = self._wy
+
+    R("_w_sh",  wx+4, wy+4, WW,   WH,   C_black,  0)
+    R("_w_bg",  wx,   wy,   WW,   WH,   C_bg,     1)
+    RO("_w_bd", wx,   wy,   WW,   WH,   C_bord,   2)
+    R("_w_el",  wx,   wy,   2,    WH,   C_acc,    3)
+    R("_w_et",  wx,   wy,   WW,   1,    C_acc,    3)
+
+    R("_tb_bg",  wx,   wy,           WW,  TOP_H, C_sidebar, 2)
+    R("_tb_sep", wx,   wy+TOP_H-1,   WW,  1,     C_acc,     3)
+    TX("_tb_nm", self._title,  wx+14, wy+9,  15, C_txt,    4)
+    TX("_tb_sb", self._sub,    wx+14, wy+27, 11, C_txtDim, 4)
+    TX("_tb_hk", "["..self._tkvname.."]", wx+WW-52, wy+18, 11, C_txtMuted, 4)
+
+    R("_tb_cx",  wx+WW-26, wy+13, 14, 14, C_redDk, 4)
+    RO("_tb_cxd",wx+WW-26, wy+13, 14, 14, C_red,   5)
+    TX("_tb_cxt","X", wx+WW-19, wy+15, 10, C_red, 6, true)
+    self:_zone(wx+WW-26, wy+13, 14, 14, function() self._visible=false end)
+    self:_zone(wx, wy, WW-34, TOP_H, function()
+        self._drag=true; self._dox=mx-wx; self._doy=my-wy
+    end)
+
+    R("_sb_bg",  wx,          wy+TOP_H, SIDE_W, WH-TOP_H, C_sidebar, 2)
+    R("_sb_sep", wx+SIDE_W-1, wy+TOP_H, 1,      WH-TOP_H, C_bord,   3)
+
+    for i, tab in ipairs(self._tabs) do
+        local ty  = wy + TOP_H + (i-1) * TAB_H
+        local isA = (i == self._curtab)
+        local p   = "_si"..i.."_"
+        local sbgc = C_sidebar
+        local spipc = C_bord
+        local stc   = C_txtDim
+        if isA then sbgc=C_accDark; spipc=C_acc; stc=C_acc end
+        R(p.."bg",  wx,   ty,          SIDE_W, TAB_H,  sbgc,  4)
+        R(p.."pip", wx,   ty,          3,      TAB_H,  spipc, 5)
+        R(p.."bot", wx,   ty+TAB_H-1,  SIDE_W, 1,      C_bord, 4)
+        TX(p.."lb", tab.name, wx+12, ty+math.floor((TAB_H-13)/2), 13, stc, 5)
+        local ci = i
+        self:_zone(wx, ty, SIDE_W, TAB_H, function()
+            if self._curtab ~= ci then self._curtab=ci; self._dd=nil end
+        end)
+    end
+
+    local cx = wx + SIDE_W
+    local cy = wy + TOP_H
+    local cw = WW - SIDE_W
+    local ch = WH - TOP_H
+
+    R("_ct_bg", cx, cy, cw, ch, C_panel, 2)
+
+    local tab = self._tabs[self._curtab]
+    if not tab then return end
+
+    local totalH = PAD
+    for _, sec in ipairs(tab.sections) do
+        totalH = totalH + 24
+        for _, el in ipairs(sec.elements) do
+            totalH = totalH + EH(el) + ELEM_G
+        end
+        totalH = totalH + PAD
+    end
+
+    local maxSc = math.max(0, totalH - ch + PAD)
+    if not self._scroll[self._curtab] then self._scroll[self._curtab]=0 end
+    self._scroll[self._curtab] = math.clamp(self._scroll[self._curtab], 0, maxSc)
+    local sc = self._scroll[self._curtab]
+
+    if maxSc > 0 then
+        local sbx = cx + cw - 5
+        local sby = cy + 2
+        local sbh = ch - 4
+        local tH  = math.max(18, math.floor(sbh * (ch / totalH)))
+        local tY  = sby + math.floor((sbh - tH) * (sc / maxSc))
+        R("_ct_sbt", sbx, sby, 4, sbh, C_bord, 5)
+        R("_ct_sbh", sbx, tY,  4, tH,  C_acc,  6)
+    end
+
+    local ew  = cw - PAD*2 - (maxSc > 0 and 8 or 0)
+    local cur = cy + PAD - sc
+
+    for _, sec in ipairs(tab.sections) do
+        if cur + 20 >= cy and cur <= cy+ch then
+            TX("_sh_"..sec.name, sec.name, cx+PAD, cur+4, 10, C_acc, 5)
+            LN("_sl_"..sec.name, cx+PAD+#sec.name*6+4, cur+9, cx+PAD+ew, cur+9, C_accDim, 5)
+        end
+        cur = cur + 24
+        for _, el in ipairs(sec.elements) do
+            local eh = EH(el)
+            if cur + eh >= cy and cur <= cy+ch then
+                self:_drawElem(el, cx+PAD, cur, ew, mx, my, 5)
+            else
+                HIDPFX(el.id)
+            end
+            cur = cur + eh + ELEM_G
+        end
+        cur = cur + PAD
+    end
+
+    self:_drawDD(mx, my)
+end
+
+function MatchaUI:Step()
+    if self._dead then return end
+
+    local vp  = workspace.CurrentCamera.ViewportSize
+    local mx  = 0
+    local my  = 0
+    local plr = game:GetService("Players").LocalPlayer
+    if plr then
+        local ms = plr:GetMouse()
+        if ms then mx=ms.X; my=ms.Y end
+    end
+
+    local m1      = ismouse1pressed()
+    local clicked = m1 and not self._pm1
+    self._pm1     = m1
+
+    if self:_edge(self._tkvk) then
+        self._visible = not self._visible
+        if not self._visible then self._dd=nil end
+    end
+
+    if self._drag then
+        if m1 then
+            self._wx = math.clamp(mx - self._dox, 0, vp.X - WW)
+            self._wy = math.clamp(my - self._doy, 0, vp.Y - WH)
+            self._dd = nil
+        else
+            self._drag = false
+        end
+        clicked = false
+    end
+
+    if self._visible and not self._dd then
+        local cti = self._curtab
+        if not self._scroll[cti] then self._scroll[cti]=0 end
+        if iskeypressed(0x26) then self._scroll[cti]=math.max(0,self._scroll[cti]-16) end
+        if iskeypressed(0x28) then self._scroll[cti]=self._scroll[cti]+16 end
+    end
+
+    if self._tbactive then
+        local el = self._tbactive
+        for vk, ch in pairs(CHARMAP) do
+            if self:_edge(vk) then
+                local shift = iskeypressed(0xA0) or iskeypressed(0xA1)
+                if shift then
+                    el.val = el.val .. ch:upper()
+                else
+                    el.val = el.val .. ch
+                end
+            end
+        end
+        if self:_edge(0x08) then el.val=el.val:sub(1,-2) end
+        if self:_edge(0x0D) then self._tbactive=nil; pcall(el.cb, el.val) end
+        if self:_edge(0x1B) then self._tbactive=nil end
+    end
+
+    if clicked and self._visible then
+        local hitDd = false
+        if self._dd then
+            local dd = self._dd
+            if inside(mx, my, dd.x, dd.y, dd.w, dd.h) then
+                hitDd = true
+                local i   = math.floor((my - dd.y) / dd.iH) + 1
+                local idx = i + dd.sc
+                if idx >= 1 and idx <= #dd.opts then
+                    dd.onpick(dd.opts[idx])
+                end
+            else
+                self._dd = nil
+                hitDd    = true
+            end
+        end
+        if not hitDd then
+            if self._tbactive then
+                local prev = self._tbactive
+                self._tbactive = nil
+                pcall(prev.cb, prev.val)
+            end
+            for _, z in ipairs(self._zones) do
+                if inside(mx, my, z.x, z.y, z.w, z.h) then
+                    z.fn()
+                    break
+                end
+            end
         end
     end
 
-    ::_dropdownStep::
+    self._zones = {}
 
-    -- ── Dropdown overlay ──
-    local dd = self._active_dropdown
-    if dd then
-        local fade2 = smooth(clamp((os.clock()-dd.born)/0.15,0,1))
-        local itemH = 13 + self._pad
-        local ddH2  = #dd.choices * itemH + self._pad
-        local dx,dy = dd.pos.X, dd.pos.Y
-        local dw    = dd.w
-
-        R(self,'mdd_sh',  dx+3, dy+3, dw, ddH2, C.black,  50)
-        R(self,'mdd_bg',  dx,   dy,   dw, ddH2, C.dropBg, 51)
-        RO(self,'mdd_bd', dx,   dy,   dw, ddH2, C.acc,    52)
-        R(self,'mdd_tl',  dx,   dy,   dw, 1,    C.acc,    53)
-
-        local cancelDrop = true
-        for ci, choice in ipairs(dd.choices) do
-            local cy2   = dy + self._pad + (ci-1)*itemH
-            local found = table.find(dd.value, choice)
-            local hov2  = self:_inBounds(Vector2.new(dx+2,cy2), Vector2.new(dw-4,itemH))
-
-            if found then
-                R(self,'mdd_selbg'..ci, dx+1, cy2, dw-2, itemH-1, C.accDark, 53)
-                LN(self,'mdd_selln'..ci, dx+1,cy2,dx+1,cy2+itemH-2, C.acc,2,54)
-            elseif hov2 then
-                R(self,'mdd_hovbg'..ci, dx+1, cy2, dw-2, itemH-1, C.dropHov, 53)
-            end
-
-            TX(self,'mdd_txt'..ci, choice, dx+8, cy2+2, 13, found and C.accGlow or (hov2 and C.txt or C.txtDim), 54)
-
-            if hov2 and clickF then
-                cancelDrop = not dd.multi
-                if dd.multi then
-                    if found then
-                        table.remove(dd.value, found)
-                    else
-                        table.insert(dd.value, choice)
-                    end
-                else
-                    dd.value = {choice}
-                end
-                pcall(dd.cb, dd.value)
-                clickF = false
-            end
-        end
-
-        self:_alphaPrefix('mdd_', fade2)
-
-        if clickF and cancelDrop then
-            self:_closeDropdown()
-        end
-
-        -- don't let clicks through to menu when dropdown open
-        if self:_inBounds(Vector2.new(dx,dy), Vector2.new(dw,ddH2)) then
-            clickF = false
-        end
+    local ok, err = pcall(self._render, self, mx, my)
+    if not ok then
+        TX("_err", "MatchaUI ERR: "..tostring(err), 8, 50, 12, C_red, 99)
     end
 end
 
