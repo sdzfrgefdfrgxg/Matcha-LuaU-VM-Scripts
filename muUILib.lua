@@ -1,171 +1,136 @@
-MatchaUI = {}
-MatchaUI.__index = MatchaUI
+--[[
+    MatchaUI Library — Fixed v1.1
+    API: UI:Init, UI:Tab, tab:Section, section:Button/Toggle/Slider/Dropdown/Textbox/Keybind/Label/Divider
+    UI:Notify, UI:Step (no-op, loop is internal)
+]]
 
--- ────────────────────────────────────────────────────────────────
---  Rayfield Colour Palette  (sampled from official screenshots)
--- ────────────────────────────────────────────────────────────────
-local RF_BG        = Color3.fromRGB(25,  25,  35)   -- main window bg
-local RF_TOPBAR    = Color3.fromRGB(30,  30,  45)   -- topbar
-local RF_SIDEBAR   = Color3.fromRGB(20,  20,  30)   -- left tab strip
-local RF_CARD      = Color3.fromRGB(33,  33,  50)   -- element card
-local RF_CARD_HOV  = Color3.fromRGB(40,  40,  60)   -- element card hovered
-local RF_CARD_ACT  = Color3.fromRGB(28,  28,  44)   -- pressed/active card
-local RF_BORDER    = Color3.fromRGB(50,  50,  72)   -- subtle border
-local RF_BORDER2   = Color3.fromRGB(65,  65,  95)   -- brighter border (accent cards)
+local Players = game:GetService("Players")
+local UIS     = game:GetService("UserInputService")
+local player  = Players.LocalPlayer
+local mouse   = player:GetMouse()
+local VP      = workspace.CurrentCamera.ViewportSize
 
--- Rayfield uses a blue→purple gradient accent. We pick the mid-point.
-local RF_ACC       = Color3.fromRGB(95,  145, 255)  -- primary accent (blue-purple)
-local RF_ACC2      = Color3.fromRGB(130, 90,  255)  -- secondary accent (purple)
-local RF_ACC_DIM   = Color3.fromRGB(55,  80,  160)  -- dimmed accent (inactive)
-local RF_ACC_DARK  = Color3.fromRGB(28,  34,  75)   -- accent dark bg (highlight)
-local RF_ACC_GLOW  = Color3.fromRGB(180, 200, 255)  -- bright accent text/glow
+-- ─── Palette ────────────────────────────────────────────────────────────────
+local C = {
+    bg       = Color3.fromRGB(15,  15,  20),
+    bgPanel  = Color3.fromRGB(20,  20,  28),
+    sidebar  = Color3.fromRGB(18,  18,  26),
+    card     = Color3.fromRGB(24,  24,  34),
+    cardHov  = Color3.fromRGB(30,  30,  42),
+    acc      = Color3.fromRGB(0,   180, 255),
+    accDim   = Color3.fromRGB(0,   100, 155),
+    accGlow  = Color3.fromRGB(120, 220, 255),
+    accDark  = Color3.fromRGB(0,   40,  65),
+    bord     = Color3.fromRGB(38,  38,  54),
+    bordAcc  = Color3.fromRGB(0,   120, 170),
+    txt      = Color3.fromRGB(215, 225, 240),
+    txtDim   = Color3.fromRGB(120, 130, 160),
+    txtMuted = Color3.fromRGB(65,  70,  100),
+    dropBg   = Color3.fromRGB(10,  10,  16),
+    dropHov  = Color3.fromRGB(0,   50,  75),
+    black    = Color3.fromRGB(0,   0,   0),
+    white    = Color3.fromRGB(255, 255, 255),
+    green    = Color3.fromRGB(0,   200, 110),
+    greenDk  = Color3.fromRGB(0,   60,  35),
+    red      = Color3.fromRGB(230, 55,  75),
+    redDk    = Color3.fromRGB(85,  15,  22),
+    orange   = Color3.fromRGB(230, 135, 0),
+    orangeDk = Color3.fromRGB(70,  42,  0),
+    slider   = Color3.fromRGB(28,  28,  40),
+    toggle_on  = Color3.fromRGB(0,  180, 255),
+    toggle_off = Color3.fromRGB(50, 52,  72),
+    input    = Color3.fromRGB(12,  12,  18),
+    notifBg  = Color3.fromRGB(18,  20,  30),
+}
 
-local RF_TXT       = Color3.fromRGB(235, 235, 255)  -- primary text
-local RF_TXT_DIM   = Color3.fromRGB(145, 148, 180)  -- secondary text
-local RF_TXT_MUTE  = Color3.fromRGB(80,  82,  115)  -- muted text
+-- ─── Drawing Pool ────────────────────────────────────────────────────────────
+-- Each object is identified by a key. Every frame we track which keys were
+-- actually used; anything not used gets hidden. This ensures objects from
+-- previous tabs / closed dropdowns disappear immediately.
+local pool     = {}
+local poolUsed = {}
 
-local RF_TOG_ON    = Color3.fromRGB(95,  145, 255)  -- toggle on colour
-local RF_TOG_OFF   = Color3.fromRGB(50,  52,  75)   -- toggle off colour
-local RF_KNOB      = Color3.fromRGB(230, 232, 255)  -- toggle knob
-local RF_KNOB_OFF  = Color3.fromRGB(110, 112, 145)  -- toggle knob off
-
-local RF_SLIDER_TR = Color3.fromRGB(42,  42,  62)   -- slider track
-local RF_SLIDER_FL = Color3.fromRGB(95,  145, 255)  -- slider fill
-local RF_SLIDER_KN = Color3.fromRGB(210, 220, 255)  -- slider knob
-
-local RF_INPUT     = Color3.fromRGB(20,  20,  32)   -- textbox bg
-local RF_DROP_BG   = Color3.fromRGB(18,  18,  28)   -- dropdown popup bg
-local RF_DROP_HOV  = Color3.fromRGB(38,  45,  85)   -- dropdown item hover
-local RF_DROP_SEL  = Color3.fromRGB(28,  34,  75)   -- dropdown item selected
-
-local RF_RED       = Color3.fromRGB(240, 70,  90)
-local RF_RED_DK    = Color3.fromRGB(90,  20,  28)
-local RF_BLACK     = Color3.fromRGB(0,   0,   0)
-local RF_WHITE     = Color3.fromRGB(255, 255, 255)
-
-local RF_NOTIF_BG  = Color3.fromRGB(28,  28,  44)
-local RF_NOTIF_BD  = Color3.fromRGB(95,  145, 255)
-
--- tab accent pip / active bg
-local RF_TAB_ACT_BG  = Color3.fromRGB(35,  42,  80)
-local RF_TAB_ACT_PIP = Color3.fromRGB(95,  145, 255)
-local RF_TAB_INACT   = Color3.fromRGB(20,  20,  30)
-
--- ────────────────────────────────────────────────────────────────
---  Drawing pool
--- ────────────────────────────────────────────────────────────────
-local pool = {}
-
-local function D(id, dtype)
-    if not pool[id] then
-        pool[id] = Drawing.new(dtype)
-        pool[id].Visible = false
+local function getObj(key, dtype)
+    if not pool[key] then
+        pool[key] = Drawing.new(dtype)
+        pool[key].Visible = false
     end
-    return pool[id]
+    poolUsed[key] = true
+    return pool[key]
 end
 
--- Filled square
-local function R(id, x, y, w, h, col, zi)
-    local d = D(id, "Square")
-    d.Position  = Vector2.new(x, y)
-    d.Size      = Vector2.new(w, h)
+local function beginFrame()
+    table.clear(poolUsed)
+end
+
+local function endFrame()
+    for k, d in pairs(pool) do
+        if not poolUsed[k] then
+            d.Visible = false
+        end
+    end
+end
+
+local _uid = 0
+local function uid(prefix)
+    _uid = _uid + 1
+    return (prefix or "o") .. tostring(_uid)
+end
+
+-- ─── Drawing helpers ────────────────────────────────────────────────────────
+local function sq(key,x,y,w,h,col,zi,filled)
+    local d = getObj(key,"Square")
+    d.Position  = Vector2.new(x,y)
+    d.Size      = Vector2.new(w,h)
     d.Color     = col
-    d.Filled    = true
+    d.Filled    = (filled ~= false)
     d.Thickness = 1
     d.ZIndex    = zi or 1
     d.Visible   = true
 end
+local function sqo(key,x,y,w,h,col,zi) sq(key,x,y,w,h,col,zi,false) end
 
--- Outline square
-local function RO(id, x, y, w, h, col, zi, thick)
-    local d = D(id, "Square")
-    d.Position  = Vector2.new(x, y)
-    d.Size      = Vector2.new(w, h)
-    d.Color     = col
-    d.Filled    = false
-    d.Thickness = thick or 1
-    d.ZIndex    = zi or 1
-    d.Visible   = true
-end
-
--- Text
-local function TX(id, text, x, y, sz, col, zi, center)
-    local d = D(id, "Text")
+local function tx(key,text,x,y,sz,col,zi,center)
+    local d = getObj(key,"Text")
     d.Text     = tostring(text)
-    d.Position = Vector2.new(x, y)
+    d.Position = Vector2.new(x,y)
     d.Size     = sz or 13
-    d.Color    = col or RF_TXT
+    d.Color    = col or C.txt
     d.Font     = Drawing.Fonts.UI
     d.Outline  = false
-    d.Center   = (center == true)
+    d.Center   = (center==true)
     d.ZIndex   = zi or 2
     d.Visible  = true
 end
 
--- Line
-local function LN(id, x1, y1, x2, y2, col, zi, thick)
-    local d = D(id, "Line")
-    d.From      = Vector2.new(x1, y1)
-    d.To        = Vector2.new(x2, y2)
+local function ln(key,x1,y1,x2,y2,col,thick,zi)
+    local d = getObj(key,"Line")
+    d.From      = Vector2.new(x1,y1)
+    d.To        = Vector2.new(x2,y2)
     d.Color     = col
     d.Thickness = thick or 1
     d.ZIndex    = zi or 1
     d.Visible   = true
 end
 
--- Circle
-local function CL(id, cx, cy, r, col, zi)
-    local d = D(id, "Circle")
-    d.Position  = Vector2.new(cx, cy)
+local function circ(key,cx,cy,r,col,zi,sides)
+    local d = getObj(key,"Circle")
+    d.Position  = Vector2.new(cx,cy)
     d.Radius    = r
     d.Color     = col
     d.Filled    = true
-    d.NumSides  = 24
+    d.NumSides  = sides or 24
     d.Thickness = 1
     d.ZIndex    = zi or 1
     d.Visible   = true
 end
 
-local function HID(id)
-    if pool[id] then pool[id].Visible = false end
+local function hit(mx,my,x,y,w,h)
+    return mx>=x and mx<=x+w and my>=y and my<=y+h
 end
 
-local function HIDPFX(pfx)
-    for k, d in pairs(pool) do
-        if k:sub(1, #pfx) == pfx then d.Visible = false end
-    end
-end
-
--- ────────────────────────────────────────────────────────────────
---  Helpers
--- ────────────────────────────────────────────────────────────────
-local _uid = 0
-local function uid()
-    _uid = _uid + 1
-    return "q" .. _uid .. "_"
-end
-
-local function inside(mx, my, x, y, w, h)
-    return mx >= x and mx <= x + w and my >= y and my <= y + h
-end
-
--- Fake "gradient" horizontal bar by blending two colours in segments
-local function GRAD_H(id, x, y, w, h, c1, c2, zi, segs)
-    segs = segs or 20
-    local sw = math.max(1, math.floor(w / segs))
-    for i = 0, segs - 1 do
-        local t  = i / (segs - 1)
-        local r2 = c1.R + (c2.R - c1.R) * t
-        local g2 = c1.G + (c2.G - c1.G) * t
-        local b2 = c1.B + (c2.B - c1.B) * t
-        R(id .. "g" .. i, x + i * sw, y, sw + 1, h, Color3.new(r2, g2, b2), zi)
-    end
-end
-
--- ────────────────────────────────────────────────────────────────
---  VK / Key tables
--- ────────────────────────────────────────────────────────────────
-local VKS = {
+-- ─── VK Scan Table ──────────────────────────────────────────────────────────
+local VK_SCAN = {
     {0x41,"A"},{0x42,"B"},{0x43,"C"},{0x44,"D"},{0x45,"E"},{0x46,"F"},
     {0x47,"G"},{0x48,"H"},{0x49,"I"},{0x4A,"J"},{0x4B,"K"},{0x4C,"L"},
     {0x4D,"M"},{0x4E,"N"},{0x4F,"O"},{0x50,"P"},{0x51,"Q"},{0x52,"R"},
@@ -176,192 +141,280 @@ local VKS = {
     {0x70,"F1"},{0x71,"F2"},{0x72,"F3"},{0x73,"F4"},{0x74,"F5"},
     {0x75,"F6"},{0x76,"F7"},{0x77,"F8"},{0x78,"F9"},{0x79,"F10"},
     {0x7A,"F11"},{0x7B,"F12"},
-    {0x2D,"Ins"},{0x2E,"Del"},{0x24,"Home"},{0x23,"End"},
-    {0x21,"PgUp"},{0x22,"PgDn"},
+    {0x2D,"Insert"},{0x2E,"Delete"},{0x24,"Home"},{0x23,"End"},
+    {0x21,"PageUp"},{0x22,"PageDown"},
     {0x26,"Up"},{0x28,"Down"},{0x25,"Left"},{0x27,"Right"},
-    {0x20,"Space"},{0x10,"Shift"},{0x11,"Ctrl"},
+    {0x20,"Space"},
 }
 
-local KEY_STR = {
-    f1=0x70,f2=0x71,f3=0x72,f4=0x73,f5=0x74,
-    f6=0x75,f7=0x76,f8=0x77,f9=0x78,f10=0x79,
-    f11=0x7A,f12=0x7B,
-    home=0x24,["end"]=0x23,ins=0x2D,del=0x2E,
-    pgup=0x21,pgdn=0x22,
-    up=0x26,down=0x28,left=0x25,right=0x27,
-    space=0x20,shift=0x10,ctrl=0x11,
-}
-for _, pair in ipairs(VKS) do
-    KEY_STR[pair[2]:lower()] = pair[1]
+-- String key → VK lookup
+local STR_TO_VK = {}
+local VK_TO_NAME = {}
+for _,entry in ipairs(VK_SCAN) do
+    local vk, nm = entry[1], entry[2]
+    STR_TO_VK[nm:lower()] = vk
+    STR_TO_VK[nm]          = vk
+    VK_TO_NAME[vk]         = nm
 end
 
-local function vkToName(vk)
-    for _, pair in ipairs(VKS) do
-        if pair[1] == vk then return pair[2] end
+local KEYMAP = {}
+do
+    for _,c in ipairs({"A","B","C","D","E","F","G","H","I","J","K","L","M",
+                        "N","O","P","Q","R","S","T","U","V","W","X","Y","Z"}) do
+        pcall(function() KEYMAP[Enum.KeyCode[c]]=c:lower() end)
     end
-    return string.format("0x%X", vk)
+    local ns={"Zero","One","Two","Three","Four","Five","Six","Seven","Eight","Nine"}
+    for i,n in ipairs(ns) do pcall(function() KEYMAP[Enum.KeyCode[n]]=tostring(i-1) end) end
+    pcall(function() KEYMAP[Enum.KeyCode.BackSpace]  = nil end)
+    pcall(function() KEYMAP[Enum.KeyCode.Period] = "." end)
+    pcall(function() KEYMAP[Enum.KeyCode.Space]  = " " end)
 end
 
-local CHARMAP = {}
-for vk = 0x41, 0x5A do CHARMAP[vk] = string.char(vk + 32) end
-for vk = 0x30, 0x39 do CHARMAP[vk] = string.char(vk) end
-CHARMAP[0x20] = " "
-CHARMAP[0xBD] = "-"
-CHARMAP[0xBE] = "."
-CHARMAP[0xBF] = "/"
+local prevVK = {}
+local function vkEdge(vk)
+    local now2  = iskeypressed(vk)
+    local prev  = prevVK[vk] or false
+    prevVK[vk]  = now2
+    return now2 and not prev
+end
 
--- ────────────────────────────────────────────────────────────────
---  Layout  (matching Rayfield proportions from screenshots)
--- ────────────────────────────────────────────────────────────────
-local WW       = 580     -- window width
-local WH       = 460     -- window height
-local SIDE_W   = 140     -- sidebar (tab list) width
-local TOP_H    = 55      -- topbar height
-local PAD      = 12      -- content padding
-local TAB_H    = 38      -- height per tab entry
-local ELEM_H   = 46      -- default element card height
-local ELEM_G   = 6       -- gap between elements
-local SEC_H    = 28      -- section header height
-local NW       = 300     -- notification width
-local NH       = 64      -- notification height
+-- ─── Layout ──────────────────────────────────────────────────────────────────
+local WW          = 560
+local WH          = 460
+local SIDEBAR     = 120
+local TOPBAR      = 48
+local CONTENT_PAD = 10
+local TAB_H       = 34
+local ELEM_H      = 44
+local ELEM_GAP    = 6
+local NOTIF_W     = 300
+local NOTIF_H     = 60
 
--- ────────────────────────────────────────────────────────────────
---  Init
--- ────────────────────────────────────────────────────────────────
+-- ─── Library ─────────────────────────────────────────────────────────────────
+local MatchaUI = {}
+MatchaUI.__index = MatchaUI
+
+local function elemH(el)
+    if el.type == "section" then return 26 end
+    if el.type == "divider" then return 14 end
+    if el.type == "label"   then return 24 end
+    if el.type == "slider"  then return 54 end
+    return ELEM_H
+end
+
+-- ─── Init (entry point matching your script's API) ───────────────────────────
 function MatchaUI:Init(cfg)
-    cfg = cfg or {}
-    self._title   = cfg.Title    or "Script"
-    self._sub     = cfg.Subtitle or "by author"
-    local tk      = cfg.ToggleKey or "f2"
-    self._tkvk    = KEY_STR[tk:lower()] or 0x71
-    self._tkvname = tk:upper()
+    local win       = setmetatable({}, MatchaUI)
+    win.Name        = cfg.Title    or "MatchaUI"
+    win.Subtitle    = cfg.Subtitle or ""
+    win.Visible     = true
 
-    local vp      = workspace.CurrentCamera.ViewportSize
-    self._wx      = math.floor((vp.X - WW) / 2)
-    self._wy      = math.floor((vp.Y - WH) / 2)
+    -- toggle key: accept string like 'f2' or a vk int
+    local tk = cfg.ToggleKey
+    if type(tk) == "string" then
+        win.ToggleKey     = STR_TO_VK[tk:upper()] or STR_TO_VK[tk] or 0x71
+        win.ToggleKeyName = tk:upper()
+    else
+        win.ToggleKey     = tk or 0x71
+        win.ToggleKeyName = VK_TO_NAME[win.ToggleKey] or "F2"
+    end
 
-    self._visible  = true
-    self._tabs     = {}
-    self._curtab   = 1
-    self._drag     = false
-    self._dox      = 0
-    self._doy      = 0
-    self._pm1      = false
-    self._prevvk   = {}
-    self._dd       = nil
-    self._tbactive = nil
-    self._kblisten = nil
-    self._notifs   = {}
-    self._scroll   = {}
-    self._zones    = {}
-    return self
+    VP = workspace.CurrentCamera.ViewportSize
+    win.WX = math.floor((VP.X - WW) / 2)
+    win.WY = math.floor((VP.Y - WH) / 2)
+
+    win.dragOn  = false
+    win.dragOX  = 0
+    win.dragOY  = 0
+
+    win.tabs       = {}
+    win.activeTab  = 1
+    win.prevTab    = 0   -- track tab changes to force full redraw
+
+    win.zones   = {}
+    win.ddZones = {}
+
+    -- dropdown state: nil when closed
+    win.DD                  = nil
+    win.ddScrollDragging    = false
+    win.ddScrollDragStartY  = 0
+    win.ddScrollDragStartOff= 0
+
+    win.notifs   = {}
+    win._destroyed = false
+
+    win:_startLoop()
+    return win
 end
 
--- ────────────────────────────────────────────────────────────────
---  Tab / Section builder
--- ────────────────────────────────────────────────────────────────
+-- ─── Notify ──────────────────────────────────────────────────────────────────
+-- Supports both:
+--   UI:Notify("message", duration)
+--   UI:Notify({Title=..., Content=..., Duration=...})
+function MatchaUI:Notify(a, b)
+    local title, content, duration
+    if type(a) == "table" then
+        title    = a.Title   or "Notice"
+        content  = a.Content or ""
+        duration = a.Duration or 3
+    else
+        title    = self.Name or "Notice"
+        content  = tostring(a)
+        duration = (type(b)=="number") and b or 3
+    end
+    table.insert(self.notifs, {
+        title    = title,
+        content  = content,
+        duration = duration,
+        expires  = tick() + duration,
+        id       = uid("nf"),
+        enterT   = tick(),
+    })
+end
+
+-- ─── Step (no-op, loop is internal) ─────────────────────────────────────────
+function MatchaUI:Step() end
+
+-- ─── Destroy ─────────────────────────────────────────────────────────────────
+function MatchaUI:Destroy()
+    self._destroyed = true
+    for _,d in pairs(pool) do
+        pcall(function() d.Visible = false end)
+    end
+end
+
+-- ─── Tab factory ─────────────────────────────────────────────────────────────
 function MatchaUI:Tab(name)
-    local tab = {name = name, sections = {}}
-    table.insert(self._tabs, tab)
-    if #self._tabs == 1 then self._curtab = 1 end
+    local tab = {
+        name     = name,
+        elements = {},
+        scroll   = 0,
+    }
+    table.insert(self.tabs, tab)
+    local win = self
 
+    -- Section returns an object with element-creation methods
     function tab:Section(sname)
-        local sec = {name = sname, elements = {}}
-        table.insert(self.sections, sec)
+        -- Insert a section header element
+        local secEl = {type="section", name=sname, id=uid("sec")}
+        table.insert(self.elements, secEl)
 
-        function sec:Button(ename, cb)
-            table.insert(self.elements, {
-                t="btn", name=ename, id=uid(), cb=cb or function() end
-            })
+        local sec = {}
+
+        local function addEl(el)
+            table.insert(tab.elements, el)
+            return el
         end
 
-        function sec:Toggle(ename, default, cb)
-            local el = {
-                t="tog", name=ename, id=uid(),
-                val=(default == true), cb=cb or function() end
-            }
-            table.insert(self.elements, el)
+        function sec:Button(name_, cb)
+            addEl({type="button", name=name_, desc="", callback=cb or function() end, id=uid("btn")})
+        end
+
+        function sec:Toggle(name_, default_, cb)
+            local el = {type="toggle", name=name_, desc="", value=default_ or false,
+                        callback=cb or function() end, id=uid("tgl")}
+            addEl(el)
             local obj = {}
-            function obj:Set(v) el.val = (v == true); pcall(el.cb, el.val) end
+            function obj:Set(v) el.value=v; pcall(el.callback,v) end
             return obj
         end
 
-        function sec:Slider(ename, default, step, mn, mx2, suffix, cb)
-            local el = {
-                t="sld", name=ename, id=uid(),
-                val=default or 0, step=step or 1,
-                min=mn or 0, max=mx2 or 100,
-                suffix=suffix or "", cb=cb or function() end,
-                dragging=false
-            }
-            table.insert(self.elements, el)
+        function sec:Slider(name_, min_, max_, default_, cb)
+            local el = {type="slider", name=name_, desc="", min=min_ or 0, max=max_ or 100,
+                        value=default_ or 0, suffix="", dragging=false,
+                        callback=cb or function() end, id=uid("sld")}
+            addEl(el)
             local obj = {}
-            function obj:Set(v)
-                el.val = math.clamp(v, el.min, el.max)
-                pcall(el.cb, el.val)
+            function obj:Set(v) el.value=math.clamp(v,el.min,el.max); pcall(el.callback,el.value) end
+            return obj
+        end
+
+        -- Dropdown: sec:Dropdown(name, defaults_table, options_table, multiselect, callback)
+        -- defaults_table is a table like {"Standard"}, we use [1] as default value
+        function sec:Dropdown(name_, defaults_, options_, multi_, cb)
+            local defVal = (type(defaults_)=="table" and defaults_[1]) or defaults_ or ""
+            local el = {
+                type     = "dropdown",
+                name     = name_,
+                desc     = "",
+                options  = options_ or {},
+                value    = defVal,
+                multi    = multi_ or false,
+                callback = cb or function() end,
+                id       = uid("dd"),
+            }
+            addEl(el)
+            local obj = {}
+            function obj:Set(v) el.value=v; pcall(el.callback,{v}) end
+            function obj:Refresh(opts, newDef)
+                el.options = opts
+                el.value   = newDef or (opts and opts[1]) or ""
             end
             return obj
         end
 
-        function sec:Dropdown(ename, default, options, multi, cb)
+        function sec:Textbox(name_, default_, cb)
             local el = {
-                t="dd", name=ename, id=uid(),
-                val=default or {}, opts=options or {},
-                multi=(multi == true), cb=cb or function() end
+                type        = "textbox",
+                name        = name_,
+                desc        = "",
+                placeholder = "Type here...",
+                value       = default_ or "",
+                active      = false,
+                callback    = cb or function() end,
+                id          = uid("tbx"),
             }
-            table.insert(self.elements, el)
+            addEl(el)
+            UIS.InputBegan:Connect(function(input)
+                if not el.active then return end
+                local kc = input.KeyCode
+                if not kc then return end
+                if kc == Enum.KeyCode.BackSpace then
+                    el.value = el.value:sub(1,-2)
+                elseif kc == Enum.KeyCode.Return or kc == Enum.KeyCode.KeypadEnter then
+                    el.active = false; pcall(el.callback, el.value)
+                elseif kc == Enum.KeyCode.Escape then
+                    el.active = false
+                else
+                    local ch = KEYMAP[kc]
+                    if ch then
+                        local shift = iskeypressed(0xA0) or iskeypressed(0xA1)
+                        el.value = el.value .. (shift and ch:upper() or ch)
+                    end
+                end
+            end)
             local obj = {}
-            function obj:Set(v) el.val = v; pcall(el.cb, el.val) end
-            function obj:Refresh(opts, def)
-                el.opts = opts or {}
-                el.val  = def  or {}
-            end
+            function obj:Get() return el.value end
+            function obj:Set(v) el.value=v end
             return obj
         end
 
-        function sec:Textbox(ename, default, cb)
+        -- Keybind: sec:Keybind(name, defaultKeyStr, cb)
+        function sec:Keybind(name_, defaultKey_, cb)
+            local vk   = (type(defaultKey_)=="string") and (STR_TO_VK[defaultKey_:upper()] or STR_TO_VK[defaultKey_]) or (defaultKey_ or 0x70)
+            local vkNm = VK_TO_NAME[vk] or tostring(defaultKey_):upper()
             local el = {
-                t="tbx", name=ename, id=uid(),
-                val=default or "", cb=cb or function() end,
-                active=false
+                type      = "keybind",
+                name      = name_,
+                desc      = "",
+                vk        = vk,
+                vkName    = vkNm,
+                listening = false,
+                callback  = cb or function() end,
+                id        = uid("kb"),
             }
-            table.insert(self.elements, el)
+            addEl(el)
             local obj = {}
-            function obj:Set(v) el.val = v end
+            function obj:Set(vk_, nm_) el.vk=vk_; el.vkName=nm_ or "?" end
             return obj
         end
 
-        function sec:Keybind(ename, defaultKey, cb)
-            local vk    = 0x71
-            local vname = "F2"
-            if type(defaultKey) == "string" then
-                vk    = KEY_STR[defaultKey:lower()] or 0x71
-                vname = defaultKey:upper()
-            elseif type(defaultKey) == "number" then
-                vk    = defaultKey
-                vname = vkToName(vk)
-            end
-            local el = {
-                t="kb", name=ename, id=uid(),
-                vk=vk, vname=vname,
-                cb=cb or function() end,
-                listening=false
-            }
-            table.insert(self.elements, el)
-            local obj = {}
-            function obj:Set(v, n)
-                el.vk    = v
-                el.vname = n or vkToName(v)
-            end
-            return obj
-        end
-
-        function sec:Label(text)
-            table.insert(self.elements, {t="lbl", text=text, id=uid()})
+        function sec:Label(text_)
+            addEl({type="label", text=text_, id=uid("lbl")})
         end
 
         function sec:Divider()
-            table.insert(self.elements, {t="div", id=uid()})
+            addEl({type="divider", id=uid("div")})
         end
 
         return sec
@@ -370,669 +423,483 @@ function MatchaUI:Tab(name)
     return tab
 end
 
--- ────────────────────────────────────────────────────────────────
---  Notify
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:Notify(text, duration)
-    duration = duration or 3
-    table.insert(self._notifs, {
-        text    = tostring(text),
-        dur     = duration,
-        born    = tick(),
-        expires = tick() + duration,
-        id      = uid()
-    })
-end
+-- ─── Element Rendering ───────────────────────────────────────────────────────
+function MatchaUI:_renderElement(el, ex, ey, ew, mx, my, zi)
+    local p = el.id.."_"
 
--- ────────────────────────────────────────────────────────────────
---  Unload
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:Unload()
-    self._dead = true
-    for _, d in pairs(pool) do
-        pcall(function() d.Visible = false end)
-    end
-end
-
--- ────────────────────────────────────────────────────────────────
---  Element height
--- ────────────────────────────────────────────────────────────────
-local function EH(el)
-    if el.t == "lbl" then return 24 end
-    if el.t == "div" then return 14 end
-    if el.t == "sld" then return 56 end
-    return ELEM_H
-end
-
--- ────────────────────────────────────────────────────────────────
---  Zone registration
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:_zone(x, y, w, h, fn)
-    table.insert(self._zones, {x=x, y=y, w=w, h=h, fn=fn})
-end
-
--- ────────────────────────────────────────────────────────────────
---  VK edge detection
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:_edge(vk)
-    local now  = iskeypressed(vk)
-    local prev = self._prevvk[vk] or false
-    self._prevvk[vk] = now
-    return now and not prev
-end
-
--- ────────────────────────────────────────────────────────────────
---  Draw single element  (Rayfield look)
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:_drawElem(el, ex, ey, ew, mx, my, zi)
-    local p  = el.id
-    local eh = EH(el)
-
-    -- ── Label ──────────────────────────────────────────────────
-    if el.t == "lbl" then
-        TX(p.."tx", el.text, ex + 6, ey + 5, 12, RF_TXT_DIM, zi)
+    if el.type == "section" then
+        tx(p.."lbl", el.name:upper(), ex, ey+6, 10, C.acc, zi+1)
+        local lblW = #el.name * 6 + 6
+        ln(p.."ln", ex+lblW, ey+11, ex+ew, ey+11, C.accDim, 1, zi)
         return
     end
 
-    -- ── Divider ────────────────────────────────────────────────
-    if el.t == "div" then
-        LN(p.."ln", ex, ey + 7, ex + ew, ey + 7, RF_BORDER, zi)
+    if el.type == "divider" then
+        ln(p.."ln", ex, ey+7, ex+ew, ey+7, C.bord, 1, zi)
         return
     end
 
-    -- Card background
-    local hov = inside(mx, my, ex, ey, ew, eh)
-    local bgc = RF_CARD
-    if hov then bgc = RF_CARD_HOV end
-    R(p.."bg",  ex,   ey,   ew, eh, bgc,       zi)
-    RO(p.."bd", ex,   ey,   ew, eh, RF_BORDER2, zi + 1)
+    if el.type == "label" then
+        tx(p.."tx", el.text, ex, ey+5, 12, C.txtDim, zi+1)
+        return
+    end
 
-    -- Rayfield left-side gradient accent bar (3px wide, full element height)
-    GRAD_H(p.."acc", ex, ey, 3, eh, RF_ACC, RF_ACC2, zi + 2, 6)
+    local eH  = elemH(el)
+    local hov = hit(mx,my,ex,ey,ew,eH)
+    sq(p.."bg",  ex, ey, ew, eH, hov and C.cardHov or C.card, zi)
+    sqo(p.."bd", ex, ey, ew, eH, C.bord, zi+1)
+    if hov then sq(p.."pip", ex, ey, 2, eH, C.acc, zi+2) end
 
-    -- ── Button ─────────────────────────────────────────────────
-    if el.t == "btn" then
-        TX(p.."nm", el.name, ex + 14, ey + math.floor((eh - 13) / 2), 13, RF_TXT, zi + 2)
-        -- Rayfield-style right-aligned pill button
-        local bw = 76
-        local bh = 26
-        local bx = ex + ew - bw - 10
-        local by = ey + math.floor((eh - bh) / 2)
-        GRAD_H(p.."bbg", bx, by, bw, bh, RF_ACC, RF_ACC2, zi + 3, 12)
-        RO(p.."bbd", bx, by, bw, bh, RF_ACC_GLOW, zi + 4)
-        TX(p.."btx", "Execute", bx + bw / 2, by + 6, 11, RF_WHITE, zi + 5, true)
-        self:_zone(ex, ey, ew, eh, function() pcall(el.cb) end)
+    if el.type ~= "slider" then
+        tx(p.."nm", el.name, ex+12, ey+15, 13, C.txt, zi+2)
+    else
+        tx(p.."nm", el.name, ex+12, ey+8, 13, C.txt, zi+2)
+    end
 
-    -- ── Toggle ─────────────────────────────────────────────────
-    elseif el.t == "tog" then
-        TX(p.."nm", el.name, ex + 14, ey + math.floor((eh - 13) / 2), 13, RF_TXT, zi + 2)
+    -- ── Button ──
+    if el.type == "button" then
+        local bw=70; local bx=ex+ew-bw-10; local by_=ey+10
+        sq(p.."cbg",  bx, by_, bw, 24, C.accDim, zi+3)
+        sqo(p.."cbd", bx, by_, bw, 24, C.acc,    zi+4)
+        tx(p.."ctx",  "Execute", bx+bw/2, by_+6, 11, C.white, zi+5, true)
+        self:_addZone(ex,ey,ew,eH, function() pcall(el.callback) end)
 
-        local pw  = 40
-        local ph  = 20
-        local px  = ex + ew - pw - 10
-        local py  = ey + math.floor((eh - ph) / 2)
-        local on  = el.val
-
-        local tbgc = RF_TOG_OFF
-        local knxv = px + 2
-        local kncc = RF_KNOB_OFF
-        if on then
-            tbgc = RF_TOG_ON
-            knxv = px + pw - ph + 2
-            kncc = RF_KNOB
-        end
-
-        R(p.."tbg",  px,  py,  pw, ph, tbgc, zi + 3)
-        RO(p.."tbd", px,  py,  pw, ph, RF_BORDER2, zi + 4)
-        -- knob is a filled square (we can't do true circles in the pill, squares look fine)
-        local ksize = ph - 4
-        R(p.."knb",  knxv, py + 2, ksize, ksize, kncc, zi + 5)
-
-        self:_zone(ex, ey, ew, eh, function()
-            el.val = not el.val
-            pcall(el.cb, el.val)
+    -- ── Toggle ──
+    elseif el.type == "toggle" then
+        local pw=38; local ph=18
+        local px=ex+ew-pw-10; local py_=ey+13
+        local on=el.value
+        sq(p.."pbg",  px, py_, pw, ph, on and C.toggle_on or C.toggle_off, zi+3)
+        sqo(p.."pbd", px, py_, pw, ph, on and C.acc or C.bord, zi+4)
+        local kx = on and (px+pw-ph+2) or (px+2)
+        sq(p.."knb",  kx, py_+2, ph-4, ph-4, on and C.white or C.txtMuted, zi+5)
+        tx(p.."ptx",  on and "ON" or "OFF", px+pw/2, py_+4, 9,
+            on and C.white or C.txtMuted, zi+5, true)
+        self:_addZone(ex,ey,ew,eH, function()
+            el.value = not el.value; pcall(el.callback, el.value)
         end)
 
-    -- ── Slider ─────────────────────────────────────────────────
-    elseif el.t == "sld" then
-        TX(p.."nm", el.name, ex + 14, ey + 8, 13, RF_TXT, zi + 2)
-
-        local sw  = ew - 28
-        local sx  = ex + 14
-        local sy  = ey + 32
-        local sh  = 5
-        local rng = math.max(1, el.max - el.min)
-        local pct = (el.val - el.min) / rng
-        local fw  = math.max(sh, math.floor(pct * sw))
-
-        -- track
-        R(p.."tr",  sx,      sy, sw, sh, RF_SLIDER_TR, zi + 3)
-        -- fill (gradient)
-        GRAD_H(p.."fl", sx, sy, fw, sh, RF_ACC, RF_ACC2, zi + 4, 10)
-        -- knob circle
-        CL(p.."kn", sx + fw, sy + math.floor(sh / 2), 7, RF_SLIDER_KN, zi + 5)
-        RO(p.."trd", sx, sy, sw, sh, RF_BORDER, zi + 3)
-
-        local valStr = tostring(math.floor(el.val)) .. el.suffix
-        TX(p.."vl", valStr, ex + ew - 10, ey + 8, 12, RF_ACC_GLOW, zi + 3)
-
+    -- ── Slider ──
+    elseif el.type == "slider" then
+        local sw=ew-24; local sx=ex+12; local sy_=ey+30; local sh=6
+        local pct = (el.value-el.min)/(el.max-el.min)
+        local fillW = math.floor(pct*sw)
+        sq(p.."tr",  sx,     sy_, sw, sh, C.slider, zi+3)
+        sq(p.."fl",  sx,     sy_, math.max(4,fillW), sh, C.acc, zi+4)
+        circ(p.."kn",sx+fillW, sy_+sh/2, 6, C.accGlow, zi+5)
+        sqo(p.."trd",sx, sy_, sw, sh, C.bord, zi+3)
+        tx(p.."val", tostring(math.floor(el.value))..el.suffix, ex+ew-14, ey+8, 12, C.accGlow, zi+3)
         if el.dragging then
             if ismouse1pressed() then
-                local rx  = math.clamp(mx - sx, 0, sw)
-                local raw = el.min + (rx / sw) * rng
-                local snp = math.floor(raw / el.step + 0.5) * el.step
-                el.val = math.clamp(snp, el.min, el.max)
-                pcall(el.cb, el.val)
+                local rx  = math.clamp(mx-sx, 0, sw)
+                el.value  = math.clamp(math.floor(el.min + (rx/sw)*(el.max-el.min)+0.5), el.min, el.max)
+                pcall(el.callback, el.value)
             else
                 el.dragging = false
             end
         end
-        self:_zone(sx, sy - 8, sw, sh + 16, function() el.dragging = true end)
+        self:_addZone(sx, sy_-6, sw, sh+12, function() el.dragging=true end)
 
-    -- ── Dropdown ───────────────────────────────────────────────
-    elseif el.t == "dd" then
-        TX(p.."nm", el.name, ex + 14, ey + math.floor((eh - 13) / 2), 13, RF_TXT, zi + 2)
+    -- ── Dropdown ──
+    elseif el.type == "dropdown" then
+        local dw=130; local dx=ex+ew-dw-10; local dy_=ey+10; local dh=22
+        local ddOpen = self.DD ~= nil and self.DD.tag == p.."dd"
+        sq(p.."dbg",  dx, dy_, dw, dh, C.dropBg, zi+3)
+        sqo(p.."dbd", dx, dy_, dw, dh, ddOpen and C.acc or C.bord, zi+4)
+        tx(p.."dtx",  tostring(el.value), dx+8, dy_+5, 12,
+            ddOpen and C.accGlow or C.txtDim, zi+5)
+        tx(p.."dar",  "v", dx+dw-12, dy_+5, 12, C.txtMuted, zi+5)
 
-        local dw  = 148
-        local dh  = 26
-        local dx  = ex + ew - dw - 10
-        local dy  = ey + math.floor((eh - dh) / 2)
-        local isO = (self._dd ~= nil and self._dd.eid == el.id)
-
-        local disp = "None"
-        if type(el.val) == "table" then
-            if #el.val == 1 then
-                disp = el.val[1]
-            elseif #el.val > 1 then
-                disp = el.val[1] .. " (+" .. (#el.val - 1) .. ")"
+        self:_addZone(dx, dy_, dw, dh, function()
+            if self.DD and self.DD.tag == p.."dd" then self.DD=nil; return end
+            local iH  = 20; local ms = math.min(8, #el.options)
+            local popH= ms*iH+4
+            local popY= dy_+dh+1
+            if popY+popH > self.WY+WH-4 then popY=dy_-popH-1 end
+            local so=0
+            for idx,v in ipairs(el.options) do
+                if v==el.value then so=math.max(0,idx-math.floor(ms/2)); break end
             end
-        elseif type(el.val) == "string" and el.val ~= "" then
-            disp = el.val
-        end
-
-        local dbd = RF_BORDER2
-        local dtc = RF_TXT_DIM
-        if isO then dbd = RF_ACC; dtc = RF_ACC_GLOW end
-
-        R(p.."dbg",  dx, dy, dw, dh, RF_INPUT,  zi + 3)
-        RO(p.."dbd", dx, dy, dw, dh, dbd,        zi + 4)
-        TX(p.."dtx", disp, dx + 8, dy + 6, 12, dtc, zi + 5)
-        TX(p.."dar", "v",  dx + dw - 14, dy + 6, 12, RF_TXT_MUTE, zi + 5)
-
-        local eref = el
-        local uiref = self
-        self:_zone(dx, dy, dw, dh, function()
-            if isO then uiref._dd = nil; return end
-            local ms   = math.min(8, #eref.opts)
-            local popH = ms * 22 + 6
-            local iy   = dy + dh + 2
-            local vp2  = workspace.CurrentCamera.ViewportSize
-            if iy + popH > uiref._wy + WH - 6 then iy = dy - popH - 2 end
-            uiref._dd = {
-                eid    = eref.id,
-                x      = dx,
-                y      = iy,
-                w      = dw,
-                h      = popH,
-                opts   = eref.opts,
-                sel    = eref.val,
-                ms     = ms,
-                iH     = 22,
-                sc     = 0,
-                multi  = eref.multi,
-                onpick = function(v)
-                    if eref.multi then
-                        local s = eref.val
-                        if type(s) ~= "table" then s = {} end
-                        local found = false
-                        for i2, sv in ipairs(s) do
-                            if sv == v then table.remove(s, i2); found = true; break end
-                        end
-                        if not found then table.insert(s, v) end
-                        eref.val = s
-                        pcall(eref.cb, eref.val)
-                    else
-                        eref.val = {v}
-                        pcall(eref.cb, eref.val)
-                        uiref._dd = nil
-                    end
+            self.DD = {
+                x=dx, y=popY, w=dw, h=popH,
+                items=el.options, cur=el.value,
+                scrollOff=so, maxShow=ms, itemH=iH,
+                tag=p.."dd", hovIdx=0,
+                -- Use a unique per-dropdown frame prefix so pool keys don't collide
+                frameKey = p.."dd_frame_",
+                onSelect=function(c)
+                    el.value=c
+                    pcall(el.callback, {c})
+                    self.DD=nil
                 end
             }
         end)
 
-    -- ── Textbox ────────────────────────────────────────────────
-    elseif el.t == "tbx" then
-        TX(p.."nm", el.name, ex + 14, ey + math.floor((eh - 13) / 2), 13, RF_TXT, zi + 2)
+    -- ── Textbox ──
+    elseif el.type == "textbox" then
+        local tw2=140; local tx2=ex+ew-tw2-10; local ty2=ey+10; local th2=24
+        sq(p.."tbg",  tx2, ty2, tw2, th2, C.input, zi+3)
+        sqo(p.."tbd", tx2, ty2, tw2, th2, el.active and C.acc or C.bord, zi+4)
+        local disp = el.active and (el.value..(tick()%1>0.5 and "|" or ""))
+                      or (el.value~="" and el.value or el.placeholder)
+        tx(p.."ttx", disp, tx2+6, ty2+6, 12,
+            el.active and C.txt or (el.value~="" and C.txt or C.txtMuted), zi+5)
+        self:_addZone(tx2,ty2,tw2,th2, function()
+            for _,t in ipairs(self.tabs) do
+                for _,e in ipairs(t.elements) do
+                    if e.type=="textbox" then e.active=false end
+                end
+            end
+            el.active=true
+        end)
 
-        local tw  = 148
-        local th  = 26
-        local tx2 = ex + ew - tw - 10
-        local ty2 = ey + math.floor((eh - th) / 2)
-
-        local active = (self._tbactive == el)
-        local disp2  = el.val
-        if active then
-            local blink = (math.floor(tick() * 2) % 2 == 0)
-            if blink then disp2 = el.val .. "|" end
-        end
-
-        local tbd = RF_BORDER2
-        local ttc = RF_TXT_DIM
-        if active then tbd = RF_ACC; ttc = RF_TXT end
-
-        R(p.."tbg",  tx2, ty2, tw, th, RF_INPUT, zi + 3)
-        RO(p.."tbd", tx2, ty2, tw, th, tbd,      zi + 4)
-        TX(p.."ttx", disp2, tx2 + 7, ty2 + 6, 12, ttc, zi + 5)
-
-        local eref2 = el
-        self:_zone(tx2, ty2, tw, th, function() self._tbactive = eref2 end)
-
-    -- ── Keybind ────────────────────────────────────────────────
-    elseif el.t == "kb" then
-        TX(p.."nm", el.name, ex + 14, ey + math.floor((eh - 13) / 2), 13, RF_TXT, zi + 2)
-
-        local kw  = math.max(54, #el.vname * 8 + 16)
-        local kh  = 24
-        local kx  = ex + ew - kw - 10
-        local ky  = ey + math.floor((eh - kh) / 2)
-
+    -- ── Keybind ──
+    elseif el.type == "keybind" then
+        local kbW=math.max(52, #el.vkName*8+16)
+        local kbX=ex+ew-kbW-10; local kbY=ey+12; local kbH=20
         if el.listening then
-            R(p.."kbg",  kx, ky, kw, kh, RF_RED_DK, zi + 3)
-            RO(p.."kbd", kx, ky, kw, kh, RF_RED,    zi + 4)
-            TX(p.."ktx", "...", kx + kw / 2, ky + 5, 11, RF_RED, zi + 5, true)
-            if self:_edge(0x1B) then
-                el.listening   = false
-                self._kblisten = nil
+            sq(p.."kbg",  kbX,kbY,kbW,kbH, C.redDk, zi+3)
+            sqo(p.."kbd", kbX,kbY,kbW,kbH, C.red,   zi+4)
+            tx(p.."ktx","...", kbX+kbW/2,kbY+4, 11, C.red, zi+5, true)
+        else
+            sq(p.."kbg",  kbX,kbY,kbW,kbH, C.accDark, zi+3)
+            sqo(p.."kbd", kbX,kbY,kbW,kbH, C.acc,     zi+4)
+            tx(p.."ktx", el.vkName, kbX+kbW/2,kbY+4, 11, C.accGlow, zi+5, true)
+        end
+        self:_addZone(kbX,kbY,kbW,kbH, function()
+            for _,t in ipairs(self.tabs) do
+                for _,e in ipairs(t.elements) do
+                    if e.type=="keybind" then e.listening=false end
+                end
+            end
+            el.listening=true
+        end)
+        if el.listening then
+            if vkEdge(0x1B) then
+                el.listening=false
             else
-                for _, pair in ipairs(VKS) do
-                    if self:_edge(pair[1]) then
-                        el.vk        = pair[1]
-                        el.vname     = pair[2]
-                        el.listening = false
-                        self._kblisten = nil
-                        pcall(el.cb, el.vk, el.vname)
+                for _,entry in ipairs(VK_SCAN) do
+                    local vk2,nm2 = entry[1],entry[2]
+                    if vkEdge(vk2) then
+                        el.vk=vk2; el.vkName=nm2; el.listening=false
+                        pcall(el.callback, nm2)
                         break
                     end
                 end
             end
-        else
-            R(p.."kbg",  kx, ky, kw, kh, RF_ACC_DARK,  zi + 3)
-            RO(p.."kbd", kx, ky, kw, kh, RF_ACC,        zi + 4)
-            TX(p.."ktx", el.vname, kx + kw / 2, ky + 5, 11, RF_ACC_GLOW, zi + 5, true)
-
-            local eref3 = el
-            local uiref3 = self
-            self:_zone(kx, ky, kw, kh, function()
-                if uiref3._kblisten then uiref3._kblisten.listening = false end
-                eref3.listening  = true
-                uiref3._kblisten = eref3
-            end)
         end
     end
 end
 
--- ────────────────────────────────────────────────────────────────
---  Draw dropdown overlay
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:_drawDD(mx, my)
-    local dd = self._dd
-    if not dd then
-        HIDPFX("_dd_")
-        return
+-- ─── Dropdown overlay ────────────────────────────────────────────────────────
+-- Uses a stable per-frame key prefix so old items from prior frames
+-- are hidden by the beginFrame/endFrame mechanism.
+function MatchaUI:_renderDD(mx, my)
+    if not self.DD then return end
+    local d = self.DD
+    local x,y,w,h = d.x, d.y, d.w, d.h
+    local fk = d.frameKey  -- unique prefix for this dropdown's items
+
+    local maxSc = math.max(0, #d.items - d.maxShow)
+    d.scrollOff = math.clamp(d.scrollOff, 0, maxSc)
+    local hasSb = maxSc > 0
+    local sbW2  = 5
+    local itemW = hasSb and (w-sbW2-1) or w
+
+    sq("ddo_sh",  x+3, y+3, w, h, C.black,  28)
+    sq("ddo_bg",  x,   y,   w, h, C.dropBg, 29)
+    sqo("ddo_bd", x,   y,   w, h, C.acc,    30)
+    sq("ddo_tl",  x,   y,   w, 2, C.acc,    31)
+
+    if hasSb then
+        local sbX2=x+w-sbW2; local sbY2=y+2; local sbH3=h-4
+        local tH2=math.max(14, math.floor(sbH3*(d.maxShow/#d.items)))
+        local tY2=sbY2+math.floor((sbH3-tH2)*(d.scrollOff/maxSc))
+        sq("ddo_str",sbX2,sbY2,sbW2,sbH3, C.bord, 32)
+        sq("ddo_sth",sbX2,tY2, sbW2,tH2,  C.acc,  33)
+        self:_addDDZone(sbX2,tY2,sbW2,tH2, function()
+            self.ddScrollDragging      = true
+            self.ddScrollDragStartY    = my
+            self.ddScrollDragStartOff  = d.scrollOff
+        end)
     end
 
-    R("_dd_sh",  dd.x + 4, dd.y + 4, dd.w, dd.h, RF_BLACK,   28)
-    R("_dd_bg",  dd.x,     dd.y,     dd.w, dd.h, RF_DROP_BG, 29)
-    RO("_dd_bd", dd.x,     dd.y,     dd.w, dd.h, RF_ACC,     30, 1)
-    -- accent top line (Rayfield style)
-    GRAD_H("_dd_tl", dd.x, dd.y, dd.w, 2, RF_ACC, RF_ACC2, 31, 14)
+    local hovI = 0
+    if hit(mx,my,x,y,itemW,h) then
+        hovI = math.floor((my-y)/d.itemH)+1
+        if hovI<1 or hovI>d.maxShow then hovI=0 end
+    end
+    d.hovIdx = hovI
 
-    for i = 1, dd.ms do
-        local idx = i + dd.sc
-        if idx <= #dd.opts then
-            local iy  = dd.y + (i - 1) * dd.iH + 3
-            local val = dd.opts[idx]
-            local sel = false
-            if type(dd.sel) == "table" then
-                for _, sv in ipairs(dd.sel) do
-                    if sv == val then sel = true; break end
-                end
-            else
-                sel = (dd.sel == val)
+    for i=1,d.maxShow do
+        local idx = i + d.scrollOff
+        if idx <= #d.items then
+            local iy_   = y+(i-1)*d.itemH
+            local isSel = d.items[idx]==d.cur
+            local isHov = d.hovIdx==i
+            -- KEY FIX: use fk (unique per dropdown instance) so items from
+            -- different dropdowns never share pool keys and get correctly hidden
+            local bk = fk.."b"..i
+            local tk2= fk.."t"..i
+            if isSel then
+                sq(bk,  x+1, iy_, itemW-2, d.itemH-1, C.accDark, 31)
+                ln(fk.."l"..i, x+1,iy_,x+1,iy_+d.itemH-2, C.acc, 2, 32)
+            elseif isHov then
+                sq(bk,  x+1, iy_, itemW-2, d.itemH-1, C.dropHov, 31)
             end
-            local hov = inside(mx, my, dd.x + 1, iy, dd.w - 2, dd.iH)
-
-            if sel then
-                R("_ddi_b" .. i,  dd.x + 1, iy, dd.w - 2, dd.iH - 1, RF_DROP_SEL, 31)
-                -- left accent pip for selected
-                GRAD_H("_ddi_p" .. i, dd.x + 1, iy, 3, dd.iH - 1, RF_ACC, RF_ACC2, 32, 4)
-            elseif hov then
-                R("_ddi_b" .. i, dd.x + 1, iy, dd.w - 2, dd.iH - 1, RF_DROP_HOV, 31)
-                HID("_ddi_p" .. i)
-            else
-                HID("_ddi_b" .. i)
-                HID("_ddi_p" .. i)
-            end
-
-            local itc = RF_TXT_DIM
-            if sel then itc = RF_ACC_GLOW elseif hov then itc = RF_TXT end
-            TX("_ddi_t" .. i, val, dd.x + 10, iy + 4, 13, itc, 32)
+            tx(tk2, d.items[idx], x+10, iy_+3, 13,
+                isSel and C.accGlow or (isHov and C.txt or C.txtDim), 32)
         end
     end
 end
 
--- ────────────────────────────────────────────────────────────────
---  Draw notifications  (Rayfield style: bottom-right slide-in)
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:_drawNotifs()
+-- ─── Notifications ────────────────────────────────────────────────────────────
+function MatchaUI:_renderNotifs()
     local now = tick()
-    for i = #self._notifs, 1, -1 do
-        if now >= self._notifs[i].expires then
-            HIDPFX(self._notifs[i].id)
-            table.remove(self._notifs, i)
-        end
+    for i=#self.notifs,1,-1 do
+        if now > self.notifs[i].expires then table.remove(self.notifs,i) end
     end
-
-    local vp  = workspace.CurrentCamera.ViewportSize
-    local bx  = vp.X - NW - 16
-    local by  = vp.Y - 16
-
-    for i, n in ipairs(self._notifs) do
-        local ny  = by - i * (NH + 10)
-        local age = now - n.born
-        local sl  = math.min(1, age / 0.22)
-        local nx  = bx + NW * (1 - sl)
-        local p   = n.id
-
-        -- shadow
-        R(p.."sh",   nx + 4,  ny + 4, NW,   NH,   RF_BLACK,    44)
-        -- body
-        R(p.."bg",   nx,      ny,     NW,   NH,   RF_NOTIF_BG, 45)
-        RO(p.."bd",  nx,      ny,     NW,   NH,   RF_BORDER2,  46)
-        -- top gradient bar (Rayfield signature)
-        GRAD_H(p.."tbar", nx, ny, NW, 3, RF_ACC, RF_ACC2, 47, 15)
-        -- left accent bar
-        GRAD_H(p.."lbar", nx, ny, 3, NH, RF_ACC, RF_ACC2, 47, 6)
-        -- text
-        TX(p.."tx", n.text, nx + 14, ny + math.floor((NH - 13) / 2), 13, RF_TXT, 48)
-        -- progress bar
-        local pct = math.max(0, (n.expires - now) / n.dur)
-        local bw  = math.floor(pct * (NW - 8))
-        R(p.."pt",  nx + 4,  ny + NH - 5, NW - 8, 3, RF_BORDER, 48)
-        if bw > 0 then
-            GRAD_H(p.."pf", nx + 4, ny + NH - 5, bw, 3, RF_ACC, RF_ACC2, 49, 10)
-        end
+    local baseX = VP.X - NOTIF_W - 14
+    local baseY = VP.Y - 14
+    for i,n in ipairs(self.notifs) do
+        local ny   = baseY - i*(NOTIF_H+8)
+        local p    = n.id.."_"
+        local age  = now - n.enterT
+        local slide= math.min(1, age/0.25)
+        local nx   = baseX + NOTIF_W*(1-slide)
+        sq(p.."sh",  nx+3, ny+3, NOTIF_W, NOTIF_H, C.black,   44)
+        sq(p.."bg",  nx,   ny,   NOTIF_W, NOTIF_H, C.notifBg, 45)
+        sqo(p.."bd", nx,   ny,   NOTIF_W, NOTIF_H, C.acc,     46)
+        sq(p.."tl",  nx,   ny,   4,       NOTIF_H, C.acc,     47)
+        sq(p.."lt",  nx,   ny,   NOTIF_W, 1,       C.acc,     47)
+        tx(p.."tt",  n.title,   nx+14, ny+10, 14, C.acc,    48)
+        tx(p.."ct",  n.content, nx+14, ny+28, 12, C.txtDim, 48)
+        local pct  = math.max(0,(n.expires-now)/n.duration)
+        local barW = math.floor(pct*(NOTIF_W-8))
+        sq(p.."tbr", nx+4, ny+NOTIF_H-4, NOTIF_W-8, 2, C.bord, 48)
+        if barW>0 then sq(p.."tbl", nx+4, ny+NOTIF_H-4, barW, 2, C.acc, 49) end
     end
 end
 
--- ────────────────────────────────────────────────────────────────
---  Main render
--- ────────────────────────────────────────────────────────────────
+-- ─── Zone helpers ────────────────────────────────────────────────────────────
+function MatchaUI:_addZone(x,y,w,h,fn)
+    table.insert(self.zones,{x=x,y=y,w=w,h=h,fn=fn})
+end
+function MatchaUI:_addDDZone(x,y,w,h,fn)
+    table.insert(self.ddZones,{x=x,y=y,w=w,h=h,fn=fn})
+end
+
+-- ─── Main Render ─────────────────────────────────────────────────────────────
 function MatchaUI:_render(mx, my)
-    self:_drawNotifs()
+    beginFrame()
+    table.clear(self.zones)
+    table.clear(self.ddZones)
 
-    if not self._visible then
-        HIDPFX("_w_")
-        HIDPFX("_tb_")
-        HIDPFX("_sb_")
-        HIDPFX("_si")
-        HIDPFX("_ct")
-        HIDPFX("_sh_")
-        HIDPFX("_sl_")
-        HIDPFX("_dd_")
-        return
-    end
+    self:_renderNotifs()
 
-    local wx = self._wx
-    local wy = self._wy
+    if not self.Visible then endFrame(); return end
 
-    -- ── Window drop-shadow ──────────────────────────────────────
-    R("_w_sh",  wx + 6, wy + 6, WW,    WH,    RF_BLACK,  0)
+    local WX=self.WX; local WY=self.WY
 
-    -- ── Window body ────────────────────────────────────────────
-    R("_w_bg",  wx,     wy,     WW,    WH,    RF_BG,     1)
-    RO("_w_bd", wx,     wy,     WW,    WH,    RF_BORDER, 2)
+    -- Window shell
+    sq("w_sh",  WX+4, WY+4, WW,    WH,    C.black,  0)
+    sq("w_bg",  WX,   WY,   WW,    WH,    C.bg,     1)
+    sqo("w_bd", WX,   WY,   WW,    WH,    C.bord,   2)
+    sq("w_el",  WX,   WY,   2,     WH,    C.acc,    3)
+    sq("w_et",  WX,   WY,   WW,    1,     C.acc,    3)
 
-    -- ── Top gradient accent line (Rayfield signature 3px bar) ──
-    GRAD_H("_w_tl", wx, wy, WW, 3, RF_ACC, RF_ACC2, 3, 20)
+    -- Topbar
+    sq("tb_bg", WX, WY, WW, TOPBAR, C.sidebar, 2)
+    sq("tb_ln", WX, WY+TOPBAR-1, WW, 1, C.acc, 3)
+    tx("tb_nm", self.Name,     WX+16, WY+10, 15, C.txt,    4)
+    tx("tb_sb", self.Subtitle, WX+16, WY+28, 11, C.txtDim, 4)
+    tx("tb_hnt",self.ToggleKeyName.." toggle", WX+WW-90, WY+19, 11, C.txtMuted, 4)
 
-    -- ── Topbar ─────────────────────────────────────────────────
-    R("_tb_bg",  wx,  wy,         WW,  TOP_H, RF_TOPBAR, 2)
-    LN("_tb_sp", wx,  wy+TOP_H-1, wx+WW, wy+TOP_H-1, RF_BORDER, 3)
-
-    -- Title + subtitle
-    TX("_tb_nm", self._title,  wx + 18, wy + 10, 16, RF_TXT,     4)
-    TX("_tb_sb", self._sub,    wx + 18, wy + 30, 11, RF_TXT_DIM, 4)
-
-    -- Toggle hint (right side, small)
-    local hkStr = "[" .. self._tkvname .. "] toggle"
-    TX("_tb_hk", hkStr, wx + WW - 90, wy + 22, 10, RF_TXT_MUTE, 4)
-
-    -- Close X button
-    local cxX = wx + WW - 28
-    local cxY = wy + 16
-    R("_tb_cx",  cxX, cxY, 16, 16, RF_RED_DK, 4)
-    RO("_tb_cxd",cxX, cxY, 16, 16, RF_RED,    5)
-    TX("_tb_cxt","X", cxX + 8,  cxY + 2, 11, RF_RED, 6, true)
-    self:_zone(cxX, cxY, 16, 16, function() self._visible = false end)
-
-    -- Drag zone (topbar minus close button)
-    self:_zone(wx, wy, WW - 36, TOP_H, function()
-        self._drag = true
-        self._dox  = mx - wx
-        self._doy  = my - wy
+    sq("tb_cx",  WX+WW-28, WY+12, 16, 16, C.redDk, 4)
+    sqo("tb_cxd",WX+WW-28, WY+12, 16, 16, C.red,   5)
+    tx("tb_cxt","X", WX+WW-20, WY+15, 11, C.red, 6, true)
+    self:_addZone(WX+WW-28, WY+12, 16, 16, function() self.Visible=false end)
+    self:_addZone(WX, WY, WW-34, TOPBAR, function()
+        self.dragOn=true; self.dragOX=mx-WX; self.dragOY=my-WY
     end)
 
-    -- ── Sidebar ────────────────────────────────────────────────
-    R("_sb_bg",  wx,           wy + TOP_H, SIDE_W, WH - TOP_H, RF_SIDEBAR, 2)
-    LN("_sb_sp", wx + SIDE_W - 1, wy + TOP_H, wx + SIDE_W - 1, wy + WH, RF_BORDER, 3)
+    -- Sidebar
+    sq("sb_bg",  WX,           WY+TOPBAR, SIDEBAR, WH-TOPBAR, C.sidebar, 2)
+    sq("sb_sep", WX+SIDEBAR-1, WY+TOPBAR, 1,       WH-TOPBAR, C.bord,   3)
 
-    for i, tab in ipairs(self._tabs) do
-        local ty  = wy + TOP_H + (i - 1) * TAB_H + 8
-        local isA = (i == self._curtab)
-        local p   = "_si" .. i .. "_"
-
-        local sbgc  = RF_TAB_INACT
-        local spipc = RF_BORDER
-        local stc   = RF_TXT_DIM
-        if isA then
-            sbgc  = RF_TAB_ACT_BG
-            spipc = RF_TAB_ACT_PIP
-            stc   = RF_ACC_GLOW
-        end
-
-        R(p.."bg", wx + 6, ty, SIDE_W - 12, TAB_H, sbgc, 4)
-        RO(p.."bd",wx + 6, ty, SIDE_W - 12, TAB_H, isA and RF_ACC or RF_BORDER, 4)
-
-        -- left pip for active tab
-        if isA then
-            GRAD_H(p.."pip", wx + 6, ty, 3, TAB_H, RF_ACC, RF_ACC2, 5, 4)
-        else
-            HIDPFX(p.."pip")
-        end
-
-        TX(p.."lb", tab.name, wx + 20, ty + math.floor((TAB_H - 13) / 2), 13, stc, 5)
-
-        local ci = i
-        self:_zone(wx + 6, ty, SIDE_W - 12, TAB_H, function()
-            if self._curtab ~= ci then
-                self._curtab = ci
-                self._dd     = nil
+    for i,tab in ipairs(self.tabs) do
+        local ty_  = WY+TOPBAR + (i-1)*TAB_H
+        local isA  = (i==self.activeTab)
+        local p    = "stb"..i.."_"
+        sq(p.."bg",  WX, ty_, SIDEBAR, TAB_H, isA and C.accDark or C.sidebar, 4)
+        sq(p.."pip", WX, ty_, 3, TAB_H, isA and C.acc or C.bord, 5)
+        sq(p.."bot", WX, ty_+TAB_H-1, SIDEBAR, 1, C.bord, 4)
+        tx(p.."lb",  tab.name, WX+14, ty_+math.floor((TAB_H-13)/2), 13,
+            isA and C.acc or C.txtDim, 5)
+        local ci=i
+        self:_addZone(WX,ty_,SIDEBAR,TAB_H, function()
+            if self.activeTab~=ci then
+                self.activeTab=ci
+                self.DD=nil  -- close any open dropdown on tab switch
             end
         end)
     end
 
-    -- ── Content area ───────────────────────────────────────────
-    local cx = wx + SIDE_W
-    local cy = wy + TOP_H
-    local cw = WW - SIDE_W
-    local ch = WH - TOP_H
+    -- Content area
+    local cx=WX+SIDEBAR; local cy=WY+TOPBAR
+    local cw=WW-SIDEBAR; local ch=WH-TOPBAR
+    sq("ct_bg", cx, cy, cw, ch, C.bgPanel, 2)
 
-    R("_ct_bg", cx, cy, cw, ch, RF_BG, 2)
+    local tab = self.tabs[self.activeTab]
+    if not tab then endFrame(); return end
 
-    local tab = self._tabs[self._curtab]
-    if not tab then return end
-
-    -- measure total content height
-    local totalH = PAD
-    for _, sec in ipairs(tab.sections) do
-        totalH = totalH + SEC_H
-        for _, el in ipairs(sec.elements) do
-            totalH = totalH + EH(el) + ELEM_G
-        end
-        totalH = totalH + PAD
+    local totalH = CONTENT_PAD
+    for _,el in ipairs(tab.elements) do
+        totalH = totalH + elemH(el) + ELEM_GAP
     end
 
-    -- scroll state
-    local maxSc = math.max(0, totalH - ch + PAD)
-    if not self._scroll[self._curtab] then self._scroll[self._curtab] = 0 end
-    self._scroll[self._curtab] = math.clamp(self._scroll[self._curtab], 0, maxSc)
-    local sc = self._scroll[self._curtab]
+    local maxScroll = math.max(0, totalH - ch + CONTENT_PAD)
+    tab.scroll = math.clamp(tab.scroll or 0, 0, maxScroll)
 
-    -- scrollbar (thin, Rayfield style)
-    if maxSc > 0 then
-        local sbx = cx + cw - 4
-        local sby = cy + 2
-        local sbh = ch - 4
-        local tH  = math.max(20, math.floor(sbh * (ch / totalH)))
-        local tY  = sby + math.floor((sbh - tH) * (sc / maxSc))
-        R("_ct_sbt", sbx, sby, 3, sbh, RF_BORDER, 5)
-        GRAD_H("_ct_sbh", sbx, tY, 3, tH, RF_ACC, RF_ACC2, 6, 4)
+    if maxScroll > 0 then
+        local sbX=cx+cw-5; local sbY=cy+2; local sbH2=ch-4
+        sq("ctsb_t",sbX,sbY,4,sbH2, C.bord, 5)
+        local tH=math.max(20, math.floor(sbH2*(ch/totalH)))
+        local tY=sbY + math.floor((sbH2-tH)*(tab.scroll/maxScroll))
+        sq("ctsb_h",sbX,tY,4,tH, C.acc, 6)
     end
 
-    local ew  = cw - PAD * 2 - (maxSc > 0 and 6 or 0)
-    local cur = cy + PAD - sc
+    local elemW = cw - CONTENT_PAD*2 - (maxScroll>0 and 8 or 0)
+    local ey0   = cy + CONTENT_PAD - tab.scroll
 
-    for _, sec in ipairs(tab.sections) do
-        -- Section header
-        if cur + SEC_H >= cy and cur <= cy + ch then
-            TX("_sh_" .. sec.name, sec.name:upper(), cx + PAD, cur + 6, 10, RF_ACC, 5)
-            -- accent underline
-            GRAD_H("_sl_" .. sec.name, cx + PAD, cur + SEC_H - 3, ew, 1, RF_ACC, RF_ACC2, 5, 14)
+    for _,el in ipairs(tab.elements) do
+        local eH_ = elemH(el)
+        if ey0+eH_ >= cy and ey0 <= cy+ch then
+            self:_renderElement(el, cx+CONTENT_PAD, ey0, elemW, mx, my, 5)
         end
-        cur = cur + SEC_H
-
-        for _, el in ipairs(sec.elements) do
-            local eh = EH(el)
-            if cur + eh >= cy and cur <= cy + ch then
-                self:_drawElem(el, cx + PAD, cur, ew, mx, my, 5)
-            else
-                HIDPFX(el.id)
-            end
-            cur = cur + eh + ELEM_G
-        end
-        cur = cur + PAD
+        ey0 = ey0 + eH_ + ELEM_GAP
     end
 
-    -- dropdown overlay drawn on top
-    self:_drawDD(mx, my)
+    -- Dropdown overlay rendered last so it's always on top
+    self:_renderDD(mx, my)
+
+    endFrame()
 end
 
--- ────────────────────────────────────────────────────────────────
---  Step  (call every game loop frame)
--- ────────────────────────────────────────────────────────────────
-function MatchaUI:Step()
-    if self._dead then return end
+-- ─── Main Loop ───────────────────────────────────────────────────────────────
+function MatchaUI:_startLoop()
+    local prevM1    = false
+    local lastScroll= 0
 
-    local vp  = workspace.CurrentCamera.ViewportSize
-    local mx  = 0
-    local my  = 0
+    task.spawn(function()
+        while not self._destroyed do
+            task.wait()
 
-    local plr = game:GetService("Players").LocalPlayer
-    if plr then
-        local ms = plr:GetMouse()
-        if ms then mx = ms.X; my = ms.Y end
-    end
+            VP = workspace.CurrentCamera.ViewportSize
+            local mx = mouse.X
+            local my = mouse.Y
+            local m1 = ismouse1pressed()
+            local justClicked = m1 and not prevM1
+            prevM1 = m1
 
-    local m1      = ismouse1pressed()
-    local clicked = m1 and not self._pm1
-    self._pm1     = m1
+            -- Toggle
+            if vkEdge(self.ToggleKey) then
+                self.Visible = not self.Visible
+                if not self.Visible then self.DD=nil end
+            end
 
-    -- Toggle menu visibility
-    if self:_edge(self._tkvk) then
-        self._visible = not self._visible
-        if not self._visible then self._dd = nil end
-    end
-
-    -- Window drag
-    if self._drag then
-        if m1 then
-            self._wx = math.clamp(mx - self._dox, 0, vp.X - WW)
-            self._wy = math.clamp(my - self._doy, 0, vp.Y - WH)
-            self._dd = nil
-        else
-            self._drag = false
-        end
-        clicked = false
-    end
-
-    -- Scroll with arrow keys
-    if self._visible and not self._dd then
-        local cti = self._curtab
-        if not self._scroll[cti] then self._scroll[cti] = 0 end
-        if iskeypressed(0x26) then self._scroll[cti] = math.max(0, self._scroll[cti] - 16) end
-        if iskeypressed(0x28) then self._scroll[cti] = self._scroll[cti] + 16 end
-    end
-
-    -- Textbox key input
-    if self._tbactive then
-        local el = self._tbactive
-        for vk, ch in pairs(CHARMAP) do
-            if self:_edge(vk) then
-                local shift = iskeypressed(0xA0) or iskeypressed(0xA1)
-                if shift then
-                    el.val = el.val .. ch:upper()
+            -- Drag
+            if self.dragOn then
+                if m1 then
+                    self.WX = math.clamp(mx-self.dragOX, 0, VP.X-WW)
+                    self.WY = math.clamp(my-self.dragOY, 0, VP.Y-WH)
+                    self.DD = nil
                 else
-                    el.val = el.val .. ch
+                    self.dragOn = false
+                end
+                justClicked = false
+            end
+
+            -- Dropdown scrollbar drag
+            if self.ddScrollDragging then
+                if m1 and self.DD then
+                    local d = self.DD
+                    local maxDD = math.max(0, #d.items-d.maxShow)
+                    local sbH_  = d.h-4
+                    local tH_   = math.max(14, math.floor(sbH_*(d.maxShow/#d.items)))
+                    local trk   = sbH_-tH_
+                    if trk>0 then
+                        local ratio = (my-self.ddScrollDragStartY)/trk
+                        d.scrollOff = math.clamp(
+                            math.floor(self.ddScrollDragStartOff + ratio*maxDD+0.5),
+                            0, maxDD)
+                    end
+                else
+                    self.ddScrollDragging=false
                 end
             end
-        end
-        if self:_edge(0x08) then el.val = el.val:sub(1, -2) end
-        if self:_edge(0x0D) then self._tbactive = nil; pcall(el.cb, el.val) end
-        if self:_edge(0x1B) then self._tbactive = nil end
-    end
 
-    -- Click handling
-    if clicked and self._visible then
-        local hitDd = false
-        if self._dd then
-            local dd = self._dd
-            if inside(mx, my, dd.x, dd.y, dd.w, dd.h) then
-                hitDd = true
-                local i   = math.floor((my - dd.y) / dd.iH) + 1
-                local idx = i + dd.sc
-                if idx >= 1 and idx <= #dd.opts then
-                    dd.onpick(dd.opts[idx])
-                end
-            else
-                self._dd = nil
-                hitDd    = true
-            end
-        end
-
-        if not hitDd then
-            if self._tbactive then
-                local prev = self._tbactive
-                self._tbactive = nil
-                pcall(prev.cb, prev.val)
-            end
-            for _, z in ipairs(self._zones) do
-                if inside(mx, my, z.x, z.y, z.w, z.h) then
-                    z.fn()
-                    break
+            -- Content scroll (arrow keys / W-S)
+            if self.Visible and not self.DD then
+                local now2 = tick()
+                if now2-lastScroll > 0.08 then
+                    local tab = self.tabs[self.activeTab]
+                    if tab then
+                        if iskeypressed(0x26) or iskeypressed(0x57) then
+                            tab.scroll = math.max(0,(tab.scroll or 0)-14); lastScroll=now2
+                        elseif iskeypressed(0x28) or iskeypressed(0x53) then
+                            tab.scroll = (tab.scroll or 0)+14; lastScroll=now2
+                        end
+                    end
                 end
             end
+
+            -- Click
+            if justClicked and self.Visible then
+                if self.DD then
+                    local d = self.DD
+                    if hit(mx,my,d.x,d.y,d.w,d.h) then
+                        local hitDDZ=false
+                        for _,z in ipairs(self.ddZones) do
+                            if hit(mx,my,z.x,z.y,z.w,z.h) then z.fn(); hitDDZ=true; break end
+                        end
+                        if not hitDDZ then
+                            local hasSb= math.max(0,#d.items-d.maxShow)>0
+                            local itemW= hasSb and (d.w-6) or d.w
+                            if hit(mx,my,d.x,d.y,itemW,d.h) then
+                                local idx = math.floor((my-d.y)/d.itemH)+1+d.scrollOff
+                                if idx>=1 and idx<=#d.items then
+                                    d.onSelect(d.items[idx])
+                                end
+                            end
+                        end
+                    else
+                        self.DD=nil
+                    end
+                else
+                    -- deactivate textboxes
+                    for _,t in ipairs(self.tabs) do
+                        for _,e in ipairs(t.elements) do
+                            if e.type=="textbox" then e.active=false end
+                        end
+                    end
+                    for _,z in ipairs(self.zones) do
+                        if hit(mx,my,z.x,z.y,z.w,z.h) then z.fn(); break end
+                    end
+                end
+            end
+
+            local ok, err = pcall(self._render, self, mx, my)
+            if not ok then
+                local d = getObj("_mui_err","Text")
+                d.Text     = "[MatchaUI] "..tostring(err)
+                d.Position = Vector2.new(10,50)
+                d.Size=12; d.Color=Color3.fromRGB(255,80,80)
+                d.Font=Drawing.Fonts.UI; d.Outline=false
+                d.Center=false; d.ZIndex=99; d.Visible=true
+            end
         end
-    end
-
-    -- Rebuild zones each frame
-    self._zones = {}
-
-    -- Render
-    local ok, err = pcall(self._render, self, mx, my)
-    if not ok then
-        TX("_err_", "MatchaUI ERR: " .. tostring(err), 8, 50, 12, RF_RED, 99)
-    end
+    end)
 end
 
 return MatchaUI
