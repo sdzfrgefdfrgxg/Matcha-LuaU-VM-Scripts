@@ -1144,4 +1144,7 @@ function library._addSection(page, stitle)
     return sec
 end
 
+-- Register as global so loadstring() callers can access it
+-- even if Matcha's loadstring doesn't propagate return values
+_G.MatchaUI = library
 return library
