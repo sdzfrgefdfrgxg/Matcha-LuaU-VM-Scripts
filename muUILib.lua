@@ -61,6 +61,29 @@ local function makeLine(x1, y1, x2, y2, color, thickness, zindex)
 end
 
 -- ─────────────────────────────────────────────
+--  Color3.toHSV polyfill (not in Matcha)
+-- ─────────────────────────────────────────────
+local function Color3toHSV(c)
+    local r, g, b = c.R, c.G, c.B
+    local max = math.max(r, g, b)
+    local min = math.min(r, g, b)
+    local delta = max - min
+    local h, s, v = 0, 0, max
+    if max ~= 0 then s = delta / max end
+    if delta ~= 0 then
+        if max == r then
+            h = (g - b) / delta % 6
+        elseif max == g then
+            h = (b - r) / delta + 2
+        else
+            h = (r - g) / delta + 4
+        end
+        h = h / 6
+    end
+    return h, s, v
+end
+
+-- ─────────────────────────────────────────────
 --  Input helpers
 -- ─────────────────────────────────────────────
 local function mouseInside(x, y, w, h)
@@ -227,7 +250,7 @@ function library:addPage(title, icon)
                             themes.DarkContrast, true, 3),
         _btnText = makeText(WIN_X + 10, btnY + 5, title, FONT_SIZE,
                             themes.TextColor, 4),
-    }, { __index = require and require or {} })
+    }, {})
 
     -- store methods via closure
     p._setVisible = function(self2, v)
@@ -826,7 +849,7 @@ function library._addSection(page, stitle)
 
         local popupVisible = false
         local color3 = default or Color3.fromRGB(255, 255, 255)
-        local hue, sat, val_ = Color3.toHSV(color3)
+        local hue, sat, val_ = Color3toHSV(color3)
 
         local allPop = {popBg, popHdr, popTxt, svBg, svCursor, hueSelector, closeTxt}
         for _, h2 in ipairs(hueSections) do table.insert(allPop, h2) end
@@ -880,7 +903,7 @@ function library._addSection(page, stitle)
         end
 
         mod.setValue = function(c)
-            hue, sat, val_ = Color3.toHSV(c)
+            hue, sat, val_ = Color3toHSV(c)
             updateSwatch(c)
             if callback then callback(c) end
         end
